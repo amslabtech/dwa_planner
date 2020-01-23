@@ -1,0 +1,7 @@
+version: '2'
+services:
+  master:
+    build: .
+    volumes:
+      - ".:/root/catkin_ws/src/this_repository"
+    container_name: master
