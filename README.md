@@ -1,5 +1,9 @@
 # dwa_planner
 
+[![Build Status](https://travis-ci.org/amslabtech/dwa_planner.svg?branch=master)](https://travis-ci.org/amslabtech/dwa_planner)
+![issue_opened](https://img.shields.io/github/issues/amslabtech/dwa_planner.svg)
+![issue_closed](https://img.shields.io/github/issues-closed/amslabtech/dwa_planner.svg)
+
 ## Enviornment
 - Ubuntu 16.04 or 18.04
 - ROS Kinetic or Melodic
