@@ -16,7 +16,6 @@ before_install:
     - chmod +x docker-compose
     - sudo mv docker-compose /usr/local/bin
     - docker-compose up -d
-    - sudo apt-get install python-catkin-tools
 
 script:
     - docker-compose run master /bin/bash -c "cd catkin_ws && catkin build && . devel/setup.bash && catkin build --catkin-make-args run_tests && catkin_test_results"

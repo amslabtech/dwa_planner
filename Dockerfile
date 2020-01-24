@@ -3,6 +3,7 @@ FROM ros:melodic-ros-base
 RUN apt update
 
 RUN apt install -y ros-melodic-tf* \
+                   python-catkin-tools \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
