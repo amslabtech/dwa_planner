@@ -65,8 +65,10 @@ protected:
     double MAX_YAWRATE;
     double MAX_ACCELERATION;
     double MAX_D_YAWRATE;
+    double MAX_DIST;
     double VELOCITY_RESOLUTION;
     double YAWRATE_RESOLUTION;
+    double ANGLE_RESOLUTION;
     double PREDICT_TIME;
     double TO_GOAL_COST_GAIN;
     double SPEED_COST_GAIN;
