@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="hz" default="10"/>
+    <arg name="hz" default="20"/>
     <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
     <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
 
