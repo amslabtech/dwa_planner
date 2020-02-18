@@ -51,8 +51,9 @@ public:
     void calc_dynamic_window(Window&, const geometry_msgs::Twist&);
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
-    float calc_obstacle_cost(const std::vector<State>& traj, const nav_msgs::OccupancyGrid& map);
+    float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     void motion(State& state, const double velocity, const double yawrate);
+    void raycast(std::vector<std::vector<float>>&);
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
 
