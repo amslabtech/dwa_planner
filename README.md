@@ -17,23 +17,9 @@ cd ..
 catkin_make
 ```
 
-## Nodes
-### dwa_planner
-- local planner node
-#### Published topics
-- /cmd_vel (geometry_msgs/Twist)
-- ~/candidate_trajectoryies (visualization_msgs/MarkerArray)
-  - for visualization
-- ~/selected_trajectory (visualization_msgs/Marker)
-  - for visualization
+## Node I/O
 
-#### Subscribed topics
-- /local_goal (geometry_msgs/PoseStamped)
-  - the local goal must be in the local map
-- /local_map (nav_msgs/OccupancyGrid)
-  - robot-centered costmap
-- /odom (nav_msgs/Odometry)
-  - robot odometry
+![dwa_planner I/O diagram](doc/images/dwa_planner_io.png)
 
 #### Parameters
 - HZ
