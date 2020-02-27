@@ -1,0 +1,6 @@
+<launch>
+
+    <test pkg="dwa_planner" type="dwa_planner_test" test-name="dwa_planner_test">
+    </test>
+
+</launch>
