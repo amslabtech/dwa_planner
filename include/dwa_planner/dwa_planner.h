@@ -5,6 +5,7 @@
 #include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <visualization_msgs/Marker.h>
@@ -45,6 +46,7 @@ public:
     };
     void process(void);
     void local_goal_callback(const geometry_msgs::PoseStampedConstPtr&);
+    void scan_callback(const sensor_msgs::LaserScanConstPtr&);
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
     void odom_callback(const nav_msgs::OdometryConstPtr&);
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
@@ -54,6 +56,7 @@ public:
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     void motion(State& state, const double velocity, const double yawrate);
     std::vector<std::vector<float>> raycast();
+    std::vector<std::vector<float>> scan_to_obs();
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
@@ -76,6 +79,7 @@ protected:
     double SPEED_COST_GAIN;
     double OBSTACLE_COST_GAIN;
     double DT;
+    bool USE_SCAN_AS_INPUT;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
@@ -84,15 +88,18 @@ protected:
     ros::Publisher candidate_trajectories_pub;
     ros::Publisher selected_trajectory_pub;
     ros::Subscriber local_map_sub;
+    ros::Subscriber scan_sub;
     ros::Subscriber local_goal_sub;
     ros::Subscriber odom_sub;
     ros::Subscriber target_velocity_sub;
     tf::TransformListener listener;
 
     geometry_msgs::PoseStamped local_goal;
+    sensor_msgs::LaserScan scan;
     nav_msgs::OccupancyGrid local_map;
     geometry_msgs::Twist current_velocity;
     bool local_goal_subscribed;
+    bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
 };

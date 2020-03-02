@@ -1,7 +1,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    :local_nh("~"), local_goal_subscribed(false), local_map_updated(false), odom_updated(false)
+    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false)
 {
     local_nh.param("HZ", HZ, {20});
     local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
@@ -19,6 +19,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
+    local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
     DT = 1.0 / HZ;
 
     std::cout << "HZ: " << HZ << std::endl;
@@ -44,7 +45,11 @@ DWAPlanner::DWAPlanner(void)
     selected_trajectory_pub = local_nh.advertise<visualization_msgs::Marker>("selected_trajectory", 1);
 
     local_goal_sub = nh.subscribe("/local_goal", 1, &DWAPlanner::local_goal_callback, this);
-    local_map_sub = nh.subscribe("/local_map", 1, &DWAPlanner::local_map_callback, this);
+    if(USE_SCAN_AS_INPUT){
+        scan_sub = nh.subscribe("/scan", 1, &DWAPlanner::scan_callback, this);
+    }else{
+        local_map_sub = nh.subscribe("/local_map", 1, &DWAPlanner::local_map_callback, this);
+    }
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
 }
@@ -73,6 +78,12 @@ void DWAPlanner::local_goal_callback(const geometry_msgs::PoseStampedConstPtr& m
     }catch(tf::TransformException ex){
         std::cout << ex.what() << std::endl;
     }
+}
+
+void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr& msg)
+{
+    scan = *msg;
+    scan_updated = true;
 }
 
 void DWAPlanner::local_map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
@@ -150,13 +161,27 @@ void DWAPlanner::process(void)
     ros::Rate loop_rate(HZ);
 
     while(ros::ok()){
-        if(local_map_updated && local_goal_subscribed && odom_updated){
+        bool input_updated = false;
+        if(USE_SCAN_AS_INPUT && scan_updated){
+            input_updated = true;
+        }else if(!USE_SCAN_AS_INPUT && local_map_updated){
+            input_updated = true;
+        }
+        if(input_updated && local_goal_subscribed && odom_updated){
             std::cout << "=== dwa planner ===" << std::endl;
             double start = ros::Time::now().toSec();
             std::cout << "local goal: \n" << local_goal << std::endl;
             Window dynamic_window = calc_dynamic_window(current_velocity);
             Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
-            std::vector<std::vector<float>> obs_list = raycast();
+
+            std::vector<std::vector<float>> obs_list;
+            if(USE_SCAN_AS_INPUT){
+                obs_list = scan_to_obs();
+                scan_updated = false;
+            }else{
+                obs_list = raycast();
+                local_map_updated = false;
+            }
 
             std::cout << goal << std::endl;
             std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
@@ -169,7 +194,6 @@ void DWAPlanner::process(void)
             std::cout << "cmd_vel: \n" << cmd_vel << std::endl;
             velocity_pub.publish(cmd_vel);
 
-            local_map_updated = false;
             odom_updated = false;
 
             std::cout << "final time: " << ros::Time::now().toSec() - start << "[s]" << std::endl;
@@ -177,8 +201,11 @@ void DWAPlanner::process(void)
             if(!local_goal_subscribed){
                 std::cout << "waiting for local goal" << std::endl;
             }
-            if(!local_map_updated){
+            if(!USE_SCAN_AS_INPUT && !local_map_updated){
                 std::cout << "waiting for local map" << std::endl;
+            }
+            if(USE_SCAN_AS_INPUT && !scan_updated){
+                std::cout << "waiting for scan" << std::endl;
             }
         }
         ros::spinOnce();
@@ -233,6 +260,20 @@ void DWAPlanner::motion(State& state, const double velocity, const double yawrat
     state.y += velocity*std::sin(state.yaw)*DT;
     state.velocity = velocity;
     state.yawrate = yawrate;
+}
+
+std::vector<std::vector<float>> DWAPlanner::scan_to_obs()
+{
+    std::vector<std::vector<float>> obs_list;
+    float angle = scan.angle_min;
+    for(auto r : scan.ranges){
+        float x = r * cos(angle);
+        float y = r * sin(angle);
+        std::vector<float> obs_state = {x, y};
+        obs_list.push_back(obs_state);
+        angle += scan.angle_increment;
+    }
+    return obs_list;
 }
 
 std::vector<std::vector<float>> DWAPlanner::raycast()
