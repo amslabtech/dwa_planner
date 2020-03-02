@@ -48,14 +48,15 @@ public:
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
     void odom_callback(const nav_msgs::OdometryConstPtr&);
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
-    void calc_dynamic_window(Window&, const geometry_msgs::Twist&);
+    Window calc_dynamic_window(const geometry_msgs::Twist&);
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     void motion(State& state, const double velocity, const double yawrate);
-    void raycast(std::vector<std::vector<float>>&);
+    std::vector<std::vector<float>> raycast();
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
+    std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
 protected:
     double HZ;
@@ -88,7 +89,6 @@ protected:
     ros::Subscriber target_velocity_sub;
     tf::TransformListener listener;
 
-    Window dynamic_window;
     geometry_msgs::PoseStamped local_goal;
     nav_msgs::OccupancyGrid local_map;
     geometry_msgs::Twist current_velocity;

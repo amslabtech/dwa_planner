@@ -1,8 +1,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    :local_nh("~"), local_goal_subscribed(false), local_map_updated(false), odom_updated(false),
-    dynamic_window(MIN_VELOCITY, MAX_VELOCITY, -MAX_YAWRATE, MAX_YAWRATE)
+    :local_nh("~"), local_goal_subscribed(false), local_map_updated(false), odom_updated(false)
 {
     local_nh.param("HZ", HZ, {20});
     local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
@@ -93,6 +92,59 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
     TARGET_VELOCITY = msg->linear.x;
     std::cout << "\033[31mtarget velocity was updated to " << TARGET_VELOCITY << "[m/s]\033[0m" << std::endl;
 }
+
+std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
+        Window dynamic_window, 
+        Eigen::Vector3d goal,
+        std::vector<std::vector<float>> obs_list)
+{
+    float min_cost = 1e6;
+    float min_obs_cost = min_cost;
+    float min_goal_cost = min_cost;
+    float min_speed_cost = min_cost;
+
+    std::vector<std::vector<State>> trajectories;
+    std::vector<State> best_traj;
+
+    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
+        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
+            State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
+            std::vector<State> traj;
+            for(float t=0; t<=PREDICT_TIME; t+=DT){
+                motion(state, v, y);
+                traj.push_back(state);
+                t += DT;
+            }
+            trajectories.push_back(traj);
+
+            float to_goal_cost = calc_to_goal_cost(traj, goal);
+            float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
+            float obstacle_cost = calc_obstacle_cost(traj, obs_list);
+            float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost;
+            if(min_cost >= final_cost){
+                min_goal_cost = to_goal_cost;
+                min_obs_cost = obstacle_cost;
+                min_speed_cost = speed_cost;
+                min_cost = final_cost;
+                best_traj = traj;
+            }
+        }
+    }
+    std::cout << "min cost: " << min_cost << std::endl;
+    std::cout << "min goal cost: " << min_goal_cost << std::endl;
+    std::cout << "min obs cost: " << min_obs_cost << std::endl;
+    std::cout << "min speed cost: " << min_speed_cost << std::endl;
+    std::cout << "trajectories size: " << trajectories.size() << std::endl;
+    visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
+    if(min_cost == 1e6){
+        std::vector<State> traj;
+        State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
+        traj.push_back(state);
+        best_traj = traj;
+    }
+    return best_traj;
+}
+
 void DWAPlanner::process(void)
 {
     ros::Rate loop_rate(HZ);
@@ -102,57 +154,18 @@ void DWAPlanner::process(void)
             std::cout << "=== dwa planner ===" << std::endl;
             double start = ros::Time::now().toSec();
             std::cout << "local goal: \n" << local_goal << std::endl;
+            Window dynamic_window = calc_dynamic_window(current_velocity);
             Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
-            calc_dynamic_window(dynamic_window, current_velocity);
-            float min_cost = 1e6;
-            float min_obs_cost = min_cost;
-            float min_goal_cost = min_cost;
-            float min_speed_cost = min_cost;
-            std::vector<std::vector<float>> obs_list;
-            raycast(obs_list);
-            std::vector<std::vector<State>> trajectories;
-            std::vector<State> best_traj;
-            for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-                for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
-                    State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
-                    std::vector<State> traj;
-                    for(float t=0; t<=PREDICT_TIME; t+=DT){
-                        motion(state, v, y);
-                        traj.push_back(state);
-                        t += DT;
-                    }
-                    trajectories.push_back(traj);
+            std::vector<std::vector<float>> obs_list = raycast();
 
-                    float to_goal_cost = calc_to_goal_cost(traj, goal);
-                    float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
-                    float obstacle_cost = calc_obstacle_cost(traj, obs_list);
-                    float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost;
-                    if(min_cost >= final_cost){
-                        min_goal_cost = to_goal_cost;
-                        min_obs_cost = obstacle_cost;
-                        min_speed_cost = speed_cost;
-                        min_cost = final_cost;
-                        best_traj = traj;
-                    }
-                }
-            }
-            std::cout << "min cost: " << min_cost << std::endl;
-            std::cout << "min goal cost: " << min_goal_cost << std::endl;
-            std::cout << "min obs cost: " << min_obs_cost << std::endl;
-            std::cout << "min speed cost: " << min_speed_cost << std::endl;
-            std::cout << "trajectories size: " << trajectories.size() << std::endl;
-            visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
+            std::cout << goal << std::endl;
+            std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
 
             std::cout << "publish velocity" << std::endl;
             geometry_msgs::Twist cmd_vel;
-            if(min_cost!=1e6){
-                cmd_vel.linear.x = best_traj[0].velocity;
-                cmd_vel.angular.z = best_traj[0].yawrate;
-                visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
-            }else{
-                cmd_vel.linear.x = 0.0;
-                cmd_vel.angular.z = 0.0;
-            }
+            cmd_vel.linear.x = best_traj[0].velocity;
+            cmd_vel.angular.z = best_traj[0].yawrate;
+            visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
             std::cout << "cmd_vel: \n" << cmd_vel << std::endl;
             velocity_pub.publish(cmd_vel);
 
@@ -173,12 +186,14 @@ void DWAPlanner::process(void)
     }
 }
 
-void DWAPlanner::calc_dynamic_window(Window& window, const geometry_msgs::Twist& current_velocity)
+DWAPlanner::Window DWAPlanner::calc_dynamic_window(const geometry_msgs::Twist& current_velocity)
 {
+    Window window(MIN_VELOCITY, MAX_VELOCITY, -MAX_YAWRATE, MAX_YAWRATE);
     window.min_velocity = std::max((current_velocity.linear.x - MAX_ACCELERATION*DT), MIN_VELOCITY);
     window.max_velocity = std::min((current_velocity.linear.x + MAX_ACCELERATION*DT), MAX_VELOCITY);
     window.min_yawrate = std::max((current_velocity.angular.z - MAX_D_YAWRATE*DT), -MAX_YAWRATE);
     window.max_yawrate = std::min((current_velocity.angular.z + MAX_D_YAWRATE*DT),  MAX_YAWRATE);
+    return window;
 }
 
 float DWAPlanner::calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal)
@@ -220,9 +235,10 @@ void DWAPlanner::motion(State& state, const double velocity, const double yawrat
     state.yawrate = yawrate;
 }
 
-void DWAPlanner::raycast(std::vector<std::vector<float>>& obs_list)
+std::vector<std::vector<float>> DWAPlanner::raycast()
 {
-    for(float angle = -M_PI*0.5; angle <= M_PI*0.5; angle += ANGLE_RESOLUTION){
+    std::vector<std::vector<float>> obs_list;
+    for(float angle = -M_PI; angle <= M_PI; angle += ANGLE_RESOLUTION){
         for(float dist = 0.0; dist <= MAX_DIST; dist += local_map.info.resolution){
             float x = dist * cos(angle);
             float y = dist * sin(angle);
@@ -238,6 +254,7 @@ void DWAPlanner::raycast(std::vector<std::vector<float>>& obs_list)
             }
         }
     }
+    return obs_list;
 }
 
 void DWAPlanner::visualize_trajectories(const std::vector<std::vector<State>>& trajectories, const double r, const double g, const double b, const int trajectories_size, const ros::Publisher& pub)
