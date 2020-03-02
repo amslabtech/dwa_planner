@@ -11,8 +11,7 @@ TEST(TestSuite, test1)
     geometry_msgs::Twist vel;
     vel.linear.x = 0.0;
     vel.angular.z = 0.0;
-    DWAPlanner::Window window(0.0, 1.0, -1.0, 1.0);
-    dwa.calc_dynamic_window(window, vel);
+    DWAPlanner::Window window = dwa.calc_dynamic_window(vel);
     EXPECT_LE(window.min_velocity, window.max_velocity);
     EXPECT_LE(window.min_yawrate, window.max_yawrate);
 }
