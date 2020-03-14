@@ -4,6 +4,9 @@
 ![issue_opened](https://img.shields.io/github/issues/amslabtech/dwa_planner.svg)
 ![issue_closed](https://img.shields.io/github/issues-closed/amslabtech/dwa_planner.svg)
 
+
+![demo_dwa](doc/demo_dwa.gif)
+
 ## Enviornment
 - Ubuntu 16.04 or 18.04
 - ROS Kinetic or Melodic
