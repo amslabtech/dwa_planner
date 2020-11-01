@@ -17,7 +17,7 @@ jobs:
 
       - name: build Dockerfile
         run: |
-          docker build -t dwa_planner:${ROS_DISTRO} -f Dockerfile . --build-arg ros_distro=${{matrix.ros_distro}}
+          docker build -t dwa_planner:${{matrix.ros_distro}} -f Dockerfile . --build-arg ros_distro=${{matrix.ros_distro}}
       - name: catkin_make with running tests
         run: |
-          docker run --rm dwa_planner:${ROS_DISTRO} bash -c "catkin_make run_tests && catkin_test_results"
+          docker run --rm dwa_planner:${{matrix.ros_distro}} bash -c "catkin_make run_tests && catkin_test_results"
