@@ -1,15 +1,15 @@
 # dwa_planner
 
-[![Build Status](https://travis-ci.org/amslabtech/dwa_planner.svg?branch=master)](https://travis-ci.org/amslabtech/dwa_planner)
-![issue_opened](https://img.shields.io/github/issues/amslabtech/dwa_planner.svg)
-![issue_closed](https://img.shields.io/github/issues-closed/amslabtech/dwa_planner.svg)
+[![CI](https://github.com/amslabtech/dwa_planner/workflows/CI/badge.svg)](https://github.com/amslabtech/dwa_planner/actions)
+[![issue_opened](https://img.shields.io/github/issues/amslabtech/dwa_planner.svg)](https://github.com/amslabtech/dwa_planner/issues?q=is%3Aopen+is%3Aissue)
+[![issue_closed](https://img.shields.io/github/issues-closed/amslabtech/dwa_planner.svg)](https://github.com/amslabtech/dwa_planner/issues?q=is%3Aissue+is%3Aclosed)
 
 
 ![demo_dwa](doc/demo_dwa.gif)
 
 ## Enviornment
-- Ubuntu 16.04 or 18.04
-- ROS Kinetic or Melodic
+- Ubuntu 16.04, 18.04 or 20.04
+- ROS Kinetic, Melodic, or Noetic
 
 ## Install and Build
 

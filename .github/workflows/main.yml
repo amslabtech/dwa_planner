@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ros_distro: [kinetic, melodic, noetic]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: build Dockerfile
+        run: |
+          docker build -t ${{github.repository}}:${{matrix.ros_distro}} -f Dockerfile . --build-arg ros_distro=${{matrix.ros_distro}}
+      - name: catkin_make with running tests
+        run: |
+          docker run --rm ${{github.repository}}:${{matrix.ros_distro}} bash -c "catkin_make run_tests && catkin_test_results"
