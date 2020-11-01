@@ -1,18 +1,31 @@
-FROM ros:melodic-ros-base
+ARG ros_distro=melodic
+FROM ros:${ros_distro}-ros-base
 
-RUN apt update
+SHELL ["/bin/bash", "-c"]
 
-RUN apt install -y ros-melodic-tf* \
-                   python-catkin-tools \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /root
+ENV DEBIAN_FRONTEND noninteractive
 
 # ROS setting
-RUN /bin/bash -c "mkdir -p catkin_ws/src"
+ARG ros_distro
+ENV ROS_DISTRO=${ros_distro}
+RUN mkdir -p catkin_ws/src
 
-ENV ROS_PACKAGE_PATH=/root/catkin_ws:$ROS_PACKAGE_PATH
+RUN cd catkin_ws/src && \
+    source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    catkin_init_workspace
 
-ENV ROS_WORKSPACE=/root/catkin_ws
+COPY . /root/catkin_ws/src/repo
 
-WORKDIR /root
+RUN cd /root/catkin_ws && \
+    apt-get update && \
+    rosdep update && \
+    rosdep install -i -r -y --from-paths src && \
+    source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    catkin_make -DCMAKE_BUILD_TYPE=Release
+
+RUN echo 'source /opt/ros/${ROS_DISTRO}/setup.bash && source /root/catkin_ws/devel/setup.bash && exec "$@"' \
+    > /root/ros_entrypoint.sh
+
+WORKDIR /root/catkin_ws
+
+ENTRYPOINT ["bash", "/root/ros_entrypoint.sh"]
