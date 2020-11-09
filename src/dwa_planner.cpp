@@ -332,6 +332,9 @@ void DWAPlanner::visualize_trajectories(const std::vector<std::vector<State>>& t
         v_trajectory.lifetime = ros::Duration();
         v_trajectory.id = count;
         v_trajectory.scale.x = 0.02;
+        geometry_msgs::Pose pose;
+        pose.orientation.w = 1;
+        v_trajectory.pose = pose;
         geometry_msgs::Point p;
         for(const auto& pose : trajectories[count]){
             p.x = pose.x;
@@ -369,6 +372,9 @@ void DWAPlanner::visualize_trajectory(const std::vector<State>& trajectory, cons
     v_trajectory.action = visualization_msgs::Marker::ADD;
     v_trajectory.lifetime = ros::Duration();
     v_trajectory.scale.x = 0.05;
+    geometry_msgs::Pose pose;
+    pose.orientation.w = 1;
+    v_trajectory.pose = pose;
     geometry_msgs::Point p;
     for(const auto& pose : trajectory){
         p.x = pose.x;
