@@ -80,6 +80,8 @@ protected:
     double OBSTACLE_COST_GAIN;
     double DT;
     bool USE_SCAN_AS_INPUT;
+    double GOAL_THRESHOLD;
+    double TURN_DIRECTION_THRESHOLD;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;

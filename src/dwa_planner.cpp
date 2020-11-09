@@ -20,6 +20,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
     local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
+    local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
+    local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     DT = 1.0 / HZ;
 
     ROS_INFO("=== DWA Planner ===");
@@ -40,6 +42,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << TO_GOAL_COST_GAIN);
     ROS_INFO_STREAM("SPEED_COST_GAIN: " << SPEED_COST_GAIN);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << OBSTACLE_COST_GAIN);
+    ROS_INFO_STREAM("GOAL_THRESHOLD: " << GOAL_THRESHOLD);
+    ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -163,6 +167,7 @@ void DWAPlanner::process(void)
 
     while(ros::ok()){
         ROS_INFO("==========================================");
+        double start = ros::Time::now().toSec();
         bool input_updated = false;
         if(USE_SCAN_AS_INPUT && scan_updated){
             input_updated = true;
@@ -170,32 +175,39 @@ void DWAPlanner::process(void)
             input_updated = true;
         }
         if(input_updated && local_goal_subscribed && odom_updated){
-            double start = ros::Time::now().toSec();
             Window dynamic_window = calc_dynamic_window(current_velocity);
             Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
             ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
 
-            std::vector<std::vector<float>> obs_list;
-            if(USE_SCAN_AS_INPUT){
-                obs_list = scan_to_obs();
-                scan_updated = false;
-            }else{
-                obs_list = raycast();
-                local_map_updated = false;
-            }
-
-            std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
-
             geometry_msgs::Twist cmd_vel;
-            cmd_vel.linear.x = best_traj[0].velocity;
-            cmd_vel.angular.z = best_traj[0].yawrate;
-            visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
+                std::vector<std::vector<float>> obs_list;
+                if(USE_SCAN_AS_INPUT){
+                    obs_list = scan_to_obs();
+                    scan_updated = false;
+                }else{
+                    obs_list = raycast();
+                    local_map_updated = false;
+                }
+
+                std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
+
+                cmd_vel.linear.x = best_traj[0].velocity;
+                cmd_vel.angular.z = best_traj[0].yawrate;
+                visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+            }else{
+                cmd_vel.linear.x = 0.0;
+                if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
+                    cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+                }
+                else{
+                    cmd_vel.angular.z = 0.0;
+                }
+            }
             ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
             velocity_pub.publish(cmd_vel);
 
             odom_updated = false;
-
-            ROS_INFO_STREAM("loop time: " << ros::Time::now().toSec() - start << "[s]");
         }else{
             if(!local_goal_subscribed){
                 ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
@@ -212,6 +224,7 @@ void DWAPlanner::process(void)
         }
         ros::spinOnce();
         loop_rate.sleep();
+        ROS_INFO_STREAM("loop time: " << ros::Time::now().toSec() - start << "[s]");
     }
 }
 
