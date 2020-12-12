@@ -246,7 +246,7 @@ float DWAPlanner::calc_to_goal_cost(const std::vector<State>& traj, const Eigen:
 
 float DWAPlanner::calc_speed_cost(const std::vector<State>& traj, const float target_velocity)
 {
-    float cost = fabs(target_velocity - traj[traj.size()-1].velocity);
+    float cost = fabs(target_velocity - fabs(traj[traj.size()-1].velocity));
     return cost;
 }
 
