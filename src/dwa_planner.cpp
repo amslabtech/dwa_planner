@@ -129,7 +129,6 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
             for(float t=0; t<=PREDICT_TIME; t+=DT){
                 motion(state, v, y);
                 traj.push_back(state);
-                t += DT;
             }
             trajectories.push_back(traj);
 
