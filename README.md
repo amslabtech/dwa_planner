@@ -8,8 +8,8 @@
 ![demo_dwa](doc/demo_dwa.gif)
 
 ## Enviornment
-- Ubuntu 16.04, 18.04 or 20.04
-- ROS Kinetic, Melodic, or Noetic
+- Ubuntu 18.04 or 20.04
+- ROS Melodic, or Noetic
 
 ## Install and Build
 
