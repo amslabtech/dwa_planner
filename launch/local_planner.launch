@@ -3,18 +3,23 @@
 <launch>
     <arg name="hz" default="20"/>
     <arg name="use_scan_as_input" default="false"/>
+    <arg name="use_active_gain" default="true"/>
     <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
     <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
 
-    <node pkg="dwa_planner" type="dwa_planner" name="dwa_planner" ns="local_planner">
+    <node pkg="dwa_planner" type="dwa_planner" name="dwa_planner" ns="local_planner" output="screen">
         <rosparam command="load" file="$(arg robot_param)"/>
         <rosparam command="load" file="$(arg dwa_param)"/>
         <param name="HZ" value="$(arg hz)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
-        <remap from="/local_map" to="/local_map"/>
+        <param name="USE_ACTIVE_GAIN" value="$(arg use_active_gain)"/>
+        <remap from="/local_map" to="/local_map/expand"/>
         <remap from="/scan" to="/front_laser/scan"/>
         <remap from="/local_goal" to="/local_goal"/>
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
-        <remap from="/odom" to="/odom"/>
+        <remap from="/odom" to="/whill/odom"/>
     </node>
+    <group if="$(arg use_active_gain)">
+        <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/gain"/>
+    </group>
 </launch>
