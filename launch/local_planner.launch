@@ -21,5 +21,6 @@
     </node>
     <group if="$(arg use_active_gain)">
         <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/gain"/>
+        <node name="gain_adjust_gui" pkg="rqt_reconfigure" type="rqt_reconfigure"/>
     </group>
 </launch>

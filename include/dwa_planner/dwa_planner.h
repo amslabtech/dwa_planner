@@ -15,6 +15,9 @@
 #include <cmath>
 #include <Eigen/Dense>
 #include <dwa_planner/Gain.h>
+#include <dynamic_reconfigure/server.h>
+#include <dwa_planner/GainSlopeConfig.h>
+#include <cassert>
 
 class DWAPlanner
 {
@@ -63,6 +66,7 @@ public:
     void scan_callback(const sensor_msgs::LaserScanConstPtr&);
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
     void odom_callback(const nav_msgs::OdometryConstPtr&);
+    void gain_slope_callback(const dwa_planner::GainSlopeConfig&);
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
     Window calc_dynamic_window(const geometry_msgs::Twist&);
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
@@ -95,6 +99,9 @@ protected:
     double TO_EDGE_COST_GAIN;
     double SPEED_COST_GAIN;
     double OBSTACLE_COST_GAIN;
+    double SPEED_GAIN_RATE;
+    double GOAL_GAIN_RATE;
+    double EDGE_GAIN_RATE;
     double DT;
     bool USE_SCAN_AS_INPUT;
     bool USE_ACTIVE_GAIN;
@@ -102,6 +109,10 @@ protected:
     double TURN_DIRECTION_THRESHOLD;
     double GAIN_SLOPE;
     double GAIN_INTERCEPT;
+    float normalization_to_goal_cost;
+    float normalization_to_edge_cost;
+    float normalization_obstacle_cost;
+    float normalization_speed_cost;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
@@ -121,6 +132,8 @@ protected:
     sensor_msgs::LaserScan scan;
     nav_msgs::OccupancyGrid local_map;
     geometry_msgs::Twist current_velocity;
+    dynamic_reconfigure::Server<dwa_planner::GainSlopeConfig> server;
+    dynamic_reconfigure::Server<dwa_planner::GainSlopeConfig>::CallbackType f;
 
     // Eigen::Vector3d old_goal(0.0,0.0,0.0);
     // Eigen::Vector3d goal(0.0,0.0,0.0);
