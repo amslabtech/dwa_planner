@@ -148,15 +148,11 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     if(USE_ACTIVE_GAIN)
     {
         //for active gain
-        float max_to_goal_cost = 0.0;
-        float max_to_edge_cost = 0.0;
+        float max_goal_cost = 0.0;
+        float max_edge_cost = 0.0;
         float max_speed_cost = 0.0;
-        float max_obstacle_cost = 0.0;
+        float max_obs_cost = 0.0;
 
-        float min_to_goal_cost = 5e5;
-        float min_to_edge_cost = 5e5;
-        float min_speed_cost = 5e5;
-        float min_obstacle_cost = 5e5;
         std::vector<Cost> costs;
 
         for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
@@ -176,17 +172,17 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
                 float obstacle_cost = calc_obstacle_cost(traj, obs_list);
                 float to_edge_cost = calc_to_edge_cost(traj, goal);
 
-                if(to_goal_cost > max_to_goal_cost) max_to_goal_cost = to_goal_cost;
-                if(to_goal_cost < min_to_goal_cost) min_to_goal_cost = to_goal_cost;
+                if(to_goal_cost > max_goal_cost) max_goal_cost = to_goal_cost;
+                if(to_goal_cost < min_goal_cost) min_goal_cost = to_goal_cost;
 
                 if(speed_cost > max_speed_cost) max_speed_cost = speed_cost;
                 if(speed_cost < min_speed_cost) min_speed_cost = speed_cost;
 
-                if(obstacle_cost > max_obstacle_cost) max_obstacle_cost = obstacle_cost;
-                if(obstacle_cost < min_obstacle_cost) min_obstacle_cost = obstacle_cost;
+                if(obstacle_cost != 1e6 && obstacle_cost > max_obs_cost) max_obs_cost = obstacle_cost;
+                if(min_obs_cost != 1e6 && obstacle_cost < min_obs_cost) min_obs_cost = obstacle_cost;
 
-                if(to_edge_cost > max_to_edge_cost) max_to_edge_cost = to_edge_cost;
-                if(to_edge_cost < min_to_edge_cost) min_to_edge_cost = to_edge_cost;
+                if(to_edge_cost > max_edge_cost) max_edge_cost = to_edge_cost;
+                if(to_edge_cost < min_edge_cost) min_edge_cost = to_edge_cost;
 
                 cost.to_goal_cost = to_goal_cost;
                 cost.speed_cost = speed_cost;
@@ -203,7 +199,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
         {
             float to_goal_cost = cost.to_goal_cost;
             float to_obstacle_distance = 1 / cost.obstacle_cost; //from obstacle_cost to distance
-            float weight = (max_to_goal_cost - to_goal_cost) / max_to_goal_cost;
+            float weight = (max_goal_cost - to_goal_cost) / max_goal_cost;
             if(weight < 0.0001) weight = 0.0001;
             pile_weight += weight;
             pile_weight_obstacle_cost += weight * to_obstacle_distance;
@@ -213,24 +209,24 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
 
         for(const auto& cost : costs)
         {
-            if((max_to_goal_cost - min_to_goal_cost) < 0.0001) normalization_to_goal_cost = 0.0;
-            else  normalization_to_goal_cost = (cost.to_goal_cost - min_to_goal_cost) / (max_to_goal_cost - min_to_goal_cost);
+            if((max_goal_cost - min_goal_cost) < 0.0001) normalization_to_goal_cost = 1.0;
+            else  normalization_to_goal_cost = (cost.to_goal_cost - min_goal_cost) / (max_goal_cost - min_goal_cost);
 
-            if((max_speed_cost - min_speed_cost) < 0.0001) normalization_speed_cost = 0.0;
+            if((max_speed_cost - min_speed_cost) < 0.0001) normalization_speed_cost = 1.0;
             else  normalization_speed_cost = (cost.speed_cost - min_speed_cost) / (max_speed_cost - min_speed_cost);
 
-            if((max_obstacle_cost - min_obstacle_cost) < 0.0001) normalization_obstacle_cost = 0.0;
-            else  normalization_obstacle_cost = (cost.obstacle_cost - min_obstacle_cost) / (max_obstacle_cost - min_obstacle_cost);
+            if((max_obs_cost - min_obs_cost) < 0.0001) normalization_obstacle_cost = 1.0;
+            else  normalization_obstacle_cost = (cost.obstacle_cost - min_obs_cost) / (max_obs_cost - min_obs_cost);
 
-            if((max_to_edge_cost - min_to_edge_cost) < 0.0001) normalization_to_edge_cost = 0.0;
-            else  normalization_to_edge_cost = (cost.to_edge_cost - min_to_edge_cost) / (max_to_edge_cost - min_to_edge_cost);
-            // ROS_INFO_STREAM(normalization_obstacle_cost);
+            if((max_edge_cost - min_edge_cost) < 0.0001) normalization_to_edge_cost = 1.0;
+            else  normalization_to_edge_cost = (cost.to_edge_cost - min_edge_cost) / (max_edge_cost - min_edge_cost);
 
             float final_cost =
                 each_gain[0]*normalization_to_goal_cost +
                 each_gain[2]*normalization_speed_cost +
                 each_gain[3]*normalization_obstacle_cost +
                 each_gain[1]*normalization_to_edge_cost;
+            // ROS_INFO_STREAM(each_gain[2]*normalization_speed_cost);
             // float final_cost =
             //     each_gain[0]*cost.to_goal_cost +
             //     each_gain[2]*cost.speed_cost +
@@ -415,6 +411,7 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
         }
     }
     cost = 1.0 / min_dist;
+    // ROS_INFO_STREAM(cost);
     return cost;
 }
 
