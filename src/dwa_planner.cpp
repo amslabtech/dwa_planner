@@ -17,7 +17,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
     local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
     local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
-    local_nh.param("TO_EDGE_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
+    local_nh.param("TO_EDGE_COST_GAIN", TO_EDGE_COST_GAIN, {1.0});
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
     local_nh.param("GAIN_SLOPE", GAIN_SLOPE, {0.1});
