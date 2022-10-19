@@ -419,9 +419,16 @@ float DWAPlanner::calc_to_edge_cost(const std::vector<State>& traj, const Eigen:
 {
     double a = std::tan(goal(2));
     double b = goal(1) - a*goal(0);
-    Eigen::Vector3d last_position(traj.back().x, traj.back().y, traj.back().yaw);
-    double d = std::fabs(a*last_position(0) - last_position(1) + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-    return d;
+    double pile_d = 0.0;
+
+    for(const auto& state : traj)
+    {
+        double d = std::fabs(a*state.x - state.y + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
+        pile_d += d;
+    }
+    // Eigen::Vector3d last_position(traj.back().x, traj.back().y, traj.back().yaw);
+    // double d = std::fabs(a*last_position(0) - last_position(1) + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
+    return pile_d;
 }
 
 std::vector<float> DWAPlanner::calc_each_gain(const float pile_weight_obstacle_cost)
