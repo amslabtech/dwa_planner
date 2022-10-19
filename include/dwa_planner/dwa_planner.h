@@ -18,6 +18,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <dwa_planner/GainSlopeConfig.h>
 #include <cassert>
+#include <std_msgs/Int32.h>
 
 class DWAPlanner
 {
@@ -68,6 +69,7 @@ public:
     void odom_callback(const nav_msgs::OdometryConstPtr&);
     void gain_slope_callback(const dwa_planner::GainSlopeConfig&);
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
+    void current_checkpoint_callback(const std_msgs::Int32ConstPtr&);
     Window calc_dynamic_window(const geometry_msgs::Twist&);
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     float calc_to_edge_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
@@ -113,6 +115,8 @@ protected:
     float normalization_to_edge_cost;
     float normalization_obstacle_cost;
     float normalization_speed_cost;
+    int current_checkpoint;
+    int previous_checkpoint;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
@@ -126,6 +130,7 @@ protected:
     ros::Subscriber local_goal_sub;
     ros::Subscriber odom_sub;
     ros::Subscriber target_velocity_sub;
+    ros::Subscriber current_checkpoint_sub;
     tf::TransformListener listener;
 
     geometry_msgs::PoseStamped local_goal;

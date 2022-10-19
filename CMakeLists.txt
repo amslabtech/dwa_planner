@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   message_generation
   dynamic_reconfigure
+  std_msgs
 )
 
 ## System dependencies are found with CMake's conventions

@@ -72,6 +72,7 @@ DWAPlanner::DWAPlanner(void)
     }
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
+    current_checkpoint_sub = nh.subscribe("/current_checkpoint", 1, &DWAPlanner::current_checkpoint_callback, this);
 
 
 }
@@ -129,6 +130,11 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
 {
     TARGET_VELOCITY = msg->linear.x;
     ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
+}
+
+void DWAPlanner::current_checkpoint_callback(const std_msgs::Int32ConstPtr& msg)
+{
+    current_checkpoint = msg->data;
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
