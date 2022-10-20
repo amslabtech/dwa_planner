@@ -141,7 +141,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     float min_goal_cost = min_cost;
     float min_edge_cost = min_cost;
     float min_speed_cost = min_cost;
-    TO_EDGE_COST_GAIN = 0.0;
+    // TO_EDGE_COST_GAIN = 0.0;
 
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
@@ -281,7 +281,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
                 float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
                 float obstacle_cost = calc_obstacle_cost(traj, obs_list);
                 float to_edge_cost = calc_to_edge_cost(traj, goal);
-                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + min_obs_to_edge*to_edge_cost;
+                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + min_obs_to_edge*to_edge_cost*TO_EDGE_COST_GAIN;
                 if(min_cost >= final_cost){
                     min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
                     min_edge_cost = min_obs_to_edge*to_edge_cost;
@@ -452,7 +452,8 @@ float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_li
     if(min_dist == 1e6) return 1.0;
     else
     {
-        return min_dist*0.3;
+        if(min_dist > 1.0) return min_dist = 1.0;
+        else return min_dist*0.5;
     }
 }
 
