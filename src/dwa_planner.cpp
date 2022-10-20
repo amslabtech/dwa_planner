@@ -326,6 +326,7 @@ void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStam
         else flag = false;
     }
     else flag = true;
+    p_checkpoint = c_checkpoint;
     // flag = false;
 }
 
