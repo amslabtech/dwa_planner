@@ -267,31 +267,31 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
 
     ROS_INFO_STREAM(min_obs_to_edge);
 
-        for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-            for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
-                State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
-                std::vector<State> traj;
-                for(float t=0; t<=PREDICT_TIME; t+=DT){
-                    motion(state, v, y);
-                    traj.push_back(state);
-                }
-                trajectories.push_back(traj);
+    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
+        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
+            State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
+            std::vector<State> traj;
+            for(float t=0; t<=PREDICT_TIME; t+=DT){
+                motion(state, v, y);
+                traj.push_back(state);
+            }
+            trajectories.push_back(traj);
 
-                float to_goal_cost = calc_to_goal_cost(traj, goal);
-                float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
-                float obstacle_cost = calc_obstacle_cost(traj, obs_list);
-                float to_edge_cost = calc_to_edge_cost(traj, goal);
-                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + min_obs_to_edge*to_edge_cost*TO_EDGE_COST_GAIN;
-                if(min_cost >= final_cost){
-                    min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                    min_edge_cost = min_obs_to_edge*to_edge_cost;
-                    min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
-                    min_speed_cost = SPEED_COST_GAIN*speed_cost;
-                    min_cost = final_cost;
-                    best_traj = traj;
-                }
+            float to_goal_cost = calc_to_goal_cost(traj, goal);
+            float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
+            float obstacle_cost = calc_obstacle_cost(traj, obs_list);
+            float to_edge_cost = calc_to_edge_cost(traj, goal);
+            float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + min_obs_to_edge*to_edge_cost*TO_EDGE_COST_GAIN;
+            if(min_cost >= final_cost){
+                min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
+                min_edge_cost = min_obs_to_edge*to_edge_cost*TO_EDGE_COST_GAIN;
+                min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
+                min_speed_cost = SPEED_COST_GAIN*speed_cost;
+                min_cost = final_cost;
+                best_traj = traj;
             }
         }
+    }
     }
 
     ROS_INFO_STREAM("Cost: " << min_cost);
@@ -449,11 +449,13 @@ float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_li
         }
     }
 
+
+    double robot_to_edge = std::fabs(a*0.0 - 0.0 + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
     if(min_dist == 1e6) return 1.0;
     else
     {
-        if(min_dist > 1.0) return min_dist = 1.0;
-        else return min_dist*0.5;
+        if(min_dist > 1.0) return min_dist = 0.0;
+        else return min_dist*robot_to_edge;
     }
 }
 
