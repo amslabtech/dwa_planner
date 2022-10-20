@@ -20,6 +20,7 @@
 #include <dwa_planner/GainSlopeConfig.h>
 #include <cassert>
 #include <std_msgs/Int32.h>
+#include <geometry_msgs/TransformStamped.h>
 
 class DWAPlanner
 {
@@ -145,6 +146,7 @@ protected:
     dynamic_reconfigure::Server<dwa_planner::GainSlopeConfig> server;
     dynamic_reconfigure::Server<dwa_planner::GainSlopeConfig>::CallbackType f;
     geometry_msgs::PoseWithCovarianceStamped current_pose;
+    geometry_msgs::PoseStamped local_goal_map_frame;
 
     // Eigen::Vector3d old_goal(0.0,0.0,0.0);
     // Eigen::Vector3d goal(0.0,0.0,0.0);

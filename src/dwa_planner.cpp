@@ -100,6 +100,7 @@ void DWAPlanner::local_goal_callback(const geometry_msgs::PoseStampedConstPtr& m
     try{
         listener.transformPose(ROBOT_FRAME, ros::Time(0), local_goal, local_goal.header.frame_id, local_goal);
         local_goal_subscribed = true;
+        listener.transformPose("map", ros::Time(0), local_goal, local_goal.header.frame_id, local_goal_map_frame);
     }catch(tf::TransformException ex){
         ROS_ERROR("%s", ex.what());
     }
@@ -321,6 +322,8 @@ void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStam
             double goal_yaw = tf::getYaw(goal.pose.orientation);
             double pose_yaw = tf::getYaw(pose.pose.pose.orientation);
             double diff_abs = fabs(goal_yaw - pose_yaw);
+            if(diff_abs > M_PI) diff_abs -= 2*M_PI;
+            if(diff_abs < -M_PI) diff_abs += 2*M_PI;
             if(diff_abs < 0.1) turn_flag = false;
         }
         else flag = false;
@@ -351,7 +354,7 @@ void DWAPlanner::process(void)
             input_updated = true;
         }
         if(input_updated){
-            turn_until_straight(current_pose, local_goal, previous_checkpoint, current_checkpoint, turn_flag);
+            turn_until_straight(current_pose, local_goal_map_frame, previous_checkpoint, current_checkpoint, turn_flag);
             if(turn_flag){
                 double goal_yaw = tf::getYaw(local_goal.pose.orientation);
                 double pose_yaw = tf::getYaw(current_pose.pose.pose.orientation);
