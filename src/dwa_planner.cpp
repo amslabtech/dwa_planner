@@ -141,6 +141,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     float min_goal_cost = min_cost;
     float min_edge_cost = min_cost;
     float min_speed_cost = min_cost;
+    TO_EDGE_COST_GAIN = 0.0;
 
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
@@ -255,6 +256,17 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
 
     else
     {
+
+    float min_obs_to_edge = calc_obs_to_edge(obs_list, goal);
+    dwa_planner::Gain _gain;
+    _gain.to_goal_gain = 0.0;
+    _gain.to_edge_gain = min_obs_to_edge;
+    _gain.speed_gain = 0.0;
+    _gain.obstacle_gain = 0.0;
+    gain_pub.publish(_gain);
+
+    ROS_INFO_STREAM(min_obs_to_edge);
+
         for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
             for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
                 State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
@@ -269,10 +281,10 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
                 float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
                 float obstacle_cost = calc_obstacle_cost(traj, obs_list);
                 float to_edge_cost = calc_to_edge_cost(traj, goal);
-                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*to_edge_cost;
+                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + min_obs_to_edge*to_edge_cost;
                 if(min_cost >= final_cost){
                     min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                    min_edge_cost = TO_EDGE_COST_GAIN*to_edge_cost;
+                    min_edge_cost = min_obs_to_edge*to_edge_cost;
                     min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
                     min_speed_cost = SPEED_COST_GAIN*speed_cost;
                     min_cost = final_cost;
@@ -295,6 +307,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
         traj.push_back(state);
         best_traj = traj;
     }
+
     return best_traj;
 }
 
@@ -415,20 +428,50 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     return cost;
 }
 
+float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_list, const Eigen::Vector3d& goal)
+{
+    float min_dist = 1e6;
+
+    double a = std::tan(goal(2));
+    double b = goal(1) - a*goal(0);
+    // double m = -1*(1/a);
+    // double x = b/(m-a);
+    // double y = m*x;
+
+    for(auto& obs : obs_list)
+    {
+        double robot_dist = std::sqrt(std::pow(obs[0],2.0) + std::pow(obs[1],2.0));
+        if(robot_dist<2.0)
+        {
+            double dist = std::fabs(a*obs[0] - obs[1] + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
+            if(dist < min_dist) min_dist = dist;
+
+        }
+    }
+
+    if(min_dist == 1e6) return 1.0;
+    else
+    {
+        return min_dist*0.3;
+    }
+}
+
 float DWAPlanner::calc_to_edge_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal)
 {
     double a = std::tan(goal(2));
     double b = goal(1) - a*goal(0);
     double pile_d = 0.0;
+    int i = 1;
 
     for(const auto& state : traj)
     {
         double d = std::fabs(a*state.x - state.y + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
         pile_d += d;
+        i++;
     }
     // Eigen::Vector3d last_position(traj.back().x, traj.back().y, traj.back().yaw);
     // double d = std::fabs(a*last_position(0) - last_position(1) + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-    return pile_d;
+    return pile_d/i;
 }
 
 std::vector<float> DWAPlanner::calc_each_gain(const float pile_weight_obstacle_cost)

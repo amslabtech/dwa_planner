@@ -73,6 +73,7 @@ public:
     float calc_to_edge_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
+    float calc_obs_to_edge(const std::vector<std::vector<float>>&, const Eigen::Vector3d& goal);
     void motion(State& state, const double velocity, const double yawrate);
     std::vector<std::vector<float>> raycast();
     std::vector<std::vector<float>> scan_to_obs();
