@@ -324,7 +324,7 @@ void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStam
             double diff_abs = fabs(goal_yaw - pose_yaw);
             if(diff_abs > M_PI) diff_abs -= 2*M_PI;
             if(diff_abs < -M_PI) diff_abs += 2*M_PI;
-            if(diff_abs < 0.5) turn_flag = false;
+            if(diff_abs < 0.2) turn_flag = false;
         }
         else flag = false;
     }
@@ -364,7 +364,7 @@ void DWAPlanner::process(void)
 
                 geometry_msgs::Twist cmd_vel;
                 cmd_vel.linear.x = 0.0;
-                cmd_vel.angular.z = MAX_YAWRATE / 2.0 * yaw_diff / fabs(yaw_diff) * -1.0;
+                cmd_vel.angular.z = MAX_YAWRATE / 5.0 * yaw_diff / fabs(yaw_diff);
                 ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
                 velocity_pub.publish(cmd_vel);
 
