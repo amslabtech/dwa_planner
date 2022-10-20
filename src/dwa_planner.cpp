@@ -1,7 +1,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false)
+    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), turn_flag(false)
 {
     local_nh.param("HZ", HZ, {20});
     local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
@@ -73,7 +73,9 @@ DWAPlanner::DWAPlanner(void)
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
     current_checkpoint_sub = nh.subscribe("/current_checkpoint", 1, &DWAPlanner::current_checkpoint_callback, this);
+    current_pose_sub = nh.subscribe("/current_pose", 1, &DWAPlanner::current_pose_callback, this);
 
+    previous_checkpoint = current_checkpoint = -1;
 
 }
 
@@ -135,6 +137,11 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
 void DWAPlanner::current_checkpoint_callback(const std_msgs::Int32ConstPtr& msg)
 {
     current_checkpoint = msg->data;
+}
+
+void DWAPlanner::current_pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+{
+    current_pose = *msg;
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
@@ -304,6 +311,24 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     return best_traj;
 }
 
+// bool DWAPlanner::turn_until_straight(const geometry_msgs::PoseStamped& goal, const int prev_checkpoint, const int curr_checkpoint)
+void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStamped& pose, const geometry_msgs::PoseStamped& goal, int& p_checkpoint, int& c_checkpoint, bool& flag)
+{
+    if(p_checkpoint == -1 || c_checkpoint == -1) flag = false;
+
+    if(p_checkpoint == c_checkpoint) {
+        if(turn_flag == true) {
+            double goal_yaw = tf::getYaw(goal.pose.orientation);
+            double pose_yaw = tf::getYaw(pose.pose.pose.orientation);
+            double diff_abs = fabs(goal_yaw - pose_yaw);
+            if(diff_abs < 0.1) turn_flag = false;
+        }
+        else flag = false;
+    }
+    else flag = true;
+    // flag = false;
+}
+
 void DWAPlanner::process(void)
 {
     ros::Rate loop_rate(HZ);
@@ -325,40 +350,59 @@ void DWAPlanner::process(void)
             input_updated = true;
         }
         if(input_updated){
-            Window dynamic_window = calc_dynamic_window(current_velocity);
-            Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
-            // Eigen::Vector3d goal(3.0, 0.0, 0);
-            ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
+            turn_until_straight(current_pose, local_goal, previous_checkpoint, current_checkpoint, turn_flag);
+            if(turn_flag){
+                double goal_yaw = tf::getYaw(local_goal.pose.orientation);
+                double pose_yaw = tf::getYaw(current_pose.pose.pose.orientation);
+                double yaw_diff = goal_yaw - pose_yaw;
+                if(yaw_diff > M_PI) yaw_diff -= 2*M_PI;
+                if(yaw_diff < -M_PI) yaw_diff += 2*M_PI;
 
-            geometry_msgs::Twist cmd_vel;
-            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
-                std::vector<std::vector<float>> obs_list;
-                if(USE_SCAN_AS_INPUT){
-                    obs_list = scan_to_obs();
-                    scan_updated = false;
-                }else{
-                    obs_list = raycast();
-                    local_map_updated = false;
-                }
-
-                std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
-
-                cmd_vel.linear.x = best_traj[0].velocity;
-                cmd_vel.angular.z = best_traj[0].yawrate;
-                visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
-            }else{
+                geometry_msgs::Twist cmd_vel;
                 cmd_vel.linear.x = 0.0;
-                if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
-                    cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
-                }
-                else{
-                    cmd_vel.angular.z = 0.0;
-                }
-            }
-            ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
-            velocity_pub.publish(cmd_vel);
+                cmd_vel.angular.z = MAX_YAWRATE / 2.0 * yaw_diff / fabs(yaw_diff);
+                ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
+                velocity_pub.publish(cmd_vel);
 
-            odom_updated = false;
+                scan_updated = false;
+                local_map_updated = false;
+                odom_updated = false;
+            }else{
+                Window dynamic_window = calc_dynamic_window(current_velocity);
+                Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
+                // Eigen::Vector3d goal(3.0, 0.0, 0);
+                ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
+
+                geometry_msgs::Twist cmd_vel;
+                if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
+                    std::vector<std::vector<float>> obs_list;
+                    if(USE_SCAN_AS_INPUT){
+                        obs_list = scan_to_obs();
+                        scan_updated = false;
+                    }else{
+                        obs_list = raycast();
+                        local_map_updated = false;
+                    }
+
+                    std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
+
+                    cmd_vel.linear.x = best_traj[0].velocity;
+                    cmd_vel.angular.z = best_traj[0].yawrate;
+                    visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+                }else{
+                    cmd_vel.linear.x = 0.0;
+                    if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
+                        cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+                    }
+                    else{
+                        cmd_vel.angular.z = 0.0;
+                    }
+                }
+                ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
+                velocity_pub.publish(cmd_vel);
+
+                odom_updated = false;
+            }
         }else{
             if(!local_goal_subscribed){
                 ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
