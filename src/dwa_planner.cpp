@@ -353,7 +353,7 @@ void DWAPlanner::process(void)
         }else if(!USE_SCAN_AS_INPUT && local_map_updated){
             input_updated = true;
         }
-        if(input_updated){
+        if(input_updated && local_goal_subscribed && odom_updated){
             turn_until_straight(current_pose, local_goal_map_frame, previous_checkpoint, current_checkpoint, turn_flag);
             if(turn_flag){
                 double goal_yaw = tf::getYaw(local_goal_map_frame.pose.orientation);
