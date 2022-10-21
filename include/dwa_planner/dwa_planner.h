@@ -15,6 +15,7 @@
 #include <cmath>
 #include <Eigen/Dense>
 #include <dwa_planner/Gain.h>
+#include <dwa_planner/Edge_Gain.h>
 #include <dynamic_reconfigure/server.h>
 #include <dwa_planner/GainSlopeConfig.h>
 #include <cassert>
@@ -108,6 +109,7 @@ protected:
     bool USE_ACTIVE_GAIN;
     double GOAL_THRESHOLD;
     double TURN_DIRECTION_THRESHOLD;
+    double THRESHOLD_OBS_EDGE_DIST;
     double GAIN_SLOPE;
     double GAIN_INTERCEPT;
     float normalization_to_goal_cost;
@@ -122,6 +124,7 @@ protected:
     ros::Publisher candidate_trajectories_pub;
     ros::Publisher selected_trajectory_pub;
     ros::Publisher gain_pub;
+    ros::Publisher edge_gain_pub;
     ros::Subscriber local_map_sub;
     ros::Subscriber scan_sub;
     ros::Subscriber local_goal_sub;

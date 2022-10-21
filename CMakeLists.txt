@@ -54,6 +54,7 @@ find_package(Eigen3 REQUIRED COMPONENTS system)
 add_message_files(
   FILES
   Gain.msg
+  Edge_Gain.msg
   # Message1.msg
   # Message2.msg
 )
