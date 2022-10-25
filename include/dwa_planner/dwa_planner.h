@@ -62,6 +62,21 @@ public:
     private:
     };
 
+    class Frame
+    {
+    public:
+        Frame(const float, const float, const float, const float);
+        float min_angle;
+        float max_angle;
+        std::vector<float> p0={0,0};
+        std::vector<float> p1={0,0};
+    private:
+    };
+    enum DIRECTION
+    {
+        RIGHT=0, FRONT=1, LEFT=2, REAR=3,
+    };
+
     void process(void);
     void local_goal_callback(const geometry_msgs::PoseStampedConstPtr&);
     void scan_callback(const sensor_msgs::LaserScanConstPtr&);
@@ -82,6 +97,10 @@ public:
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
     std::vector<float> calc_each_gain(const float pile_weight_obstacle_cost);
+    float calc_distance_from_robot(const State& state, const std::vector<float>& obs);
+    void set_robot_frames(const double front, const double rear, const double left, const double right);
+    int judge_nearest_frame(const State& state, const std::vector<float>& obs);
+
 
 protected:
     double HZ;
@@ -116,6 +135,7 @@ protected:
     float normalization_to_edge_cost;
     float normalization_obstacle_cost;
     float normalization_speed_cost;
+    std::vector<Frame> ROBOT_FRAMES;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;

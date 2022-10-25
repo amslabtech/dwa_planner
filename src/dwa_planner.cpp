@@ -31,6 +31,13 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("THRESHOLD_OBS_EDGE_DIST", THRESHOLD_OBS_EDGE_DIST, {2.0});
+
+    double FRONT_FRAME_DISTANCE, REAR_FRAME_DISTANCE, LEFT_FRAME_DISTANCE, RIGHT_FRAME_DISTANCE;
+    local_nh.param("FRONT_FRAME_DISTANCE", FRONT_FRAME_DISTANCE, {0.5});
+    local_nh.param("REAR_FRAME_DISTANCE", REAR_FRAME_DISTANCE, -FRONT_FRAME_DISTANCE);
+    local_nh.param("LEFT_FRAME_DISTANCE", LEFT_FRAME_DISTANCE, {0.5});
+    local_nh.param("RIGHT_FRAME_DISTANCE", RIGHT_FRAME_DISTANCE, -LEFT_FRAME_DISTANCE);
+    set_robot_frames(FRONT_FRAME_DISTANCE, REAR_FRAME_DISTANCE, LEFT_FRAME_DISTANCE, RIGHT_FRAME_DISTANCE);
     DT = 1.0 / HZ;
 
     ROS_INFO("=== DWA Planner ===");
@@ -92,6 +99,38 @@ DWAPlanner::Window::Window(void)
 DWAPlanner::Window::Window(const double min_v, const double max_v, const double min_y, const double max_y)
     :min_velocity(min_v), max_velocity(max_v), min_yawrate(min_y), max_yawrate(max_y)
 {
+}
+
+void DWAPlanner::set_robot_frames(const double front, const double rear, const double left, const double right){
+    ROBOT_FRAMES.clear();
+    Frame frame(rear, right, front, right);
+    ROBOT_FRAMES.push_back(frame);
+    frame = Frame(front, right, front, left);
+    ROBOT_FRAMES.push_back(frame);
+    frame = Frame(front, left, rear, left);
+    ROBOT_FRAMES.push_back(frame);
+    frame = Frame(rear, left, rear, right);
+    ROBOT_FRAMES.push_back(frame);
+}
+
+DWAPlanner::Frame::Frame(const float x0, const float y0, const float x1, const float y1)
+{
+    float angle0 = atan2(y0, x0);
+    float angle1 = atan2(y1, x1);
+    p0[0] = x0;
+    p0[1] = y0;
+    p1[0] = x1;
+    p1[1] = y1;
+    if(angle0 > angle1)
+    {
+        this->min_angle = angle1;
+        this->max_angle = angle0;
+    }
+    else
+    {
+        this->min_angle = angle0;
+        this->max_angle = angle1;
+    }
 }
 
 void DWAPlanner::local_goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
@@ -420,9 +459,9 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     float min_dist = 1e3;
     for(const auto& state : traj){
         for(const auto& obs : obs_list){
-            float dist = sqrt((state.x - obs[0])*(state.x - obs[0]) + (state.y - obs[1])*(state.y - obs[1]));
+            float dist = calc_distance_from_robot(state, obs);
             if(dist <= local_map.info.resolution){
-                cost = 1e6;
+               cost = 1e6;
                 return cost;
             }
             min_dist = std::min(min_dist, dist);
@@ -431,6 +470,20 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     cost = 1.0 / min_dist;
     // ROS_INFO_STREAM(cost);
     return cost;
+}
+
+float DWAPlanner::calc_distance_from_robot(const State& state, const std::vector<float>& obs)
+{
+    int direction = judge_nearest_frame(state, obs);
+}
+
+int DWAPlanner::judge_nearest_frame(const State& state, const std::vector<float>& obs)
+{
+    float obs_angle = atan2(obs[1]-state.y, obs[0]-state.x);
+    if(obs_angle > ROBOT_FRAMES[DIRECTION::RIGHT].min_angle && obs_angle < ROBOT_FRAMES[DIRECTION::RIGHT].max_angle) return DIRECTION::RIGHT;
+    else if(obs_angle > ROBOT_FRAMES[DIRECTION::FRONT].min_angle && obs_angle < ROBOT_FRAMES[DIRECTION::FRONT].max_angle) return DIRECTION::FRONT;
+    else if(obs_angle > ROBOT_FRAMES[DIRECTION::LEFT].min_angle && obs_angle < ROBOT_FRAMES[DIRECTION::LEFT].max_angle) return DIRECTION::LEFT;
+    else return DIRECTION::REAR;
 }
 
 float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_list, const Eigen::Vector3d& goal)
