@@ -68,8 +68,8 @@ public:
         Frame(const float, const float, const float, const float);
         float min_angle;
         float max_angle;
-        std::vector<float> p0={0,0};
         std::vector<float> p1={0,0};
+        std::vector<float> p2={0,0};
     private:
     };
     enum DIRECTION
@@ -100,6 +100,8 @@ public:
     float calc_distance_from_robot(const State& state, const std::vector<float>& obs);
     void set_robot_frames(const double front, const double rear, const double left, const double right);
     int judge_nearest_frame(const State& state, const std::vector<float>& obs);
+    Frame transform_nearest_frame(const State& state, const Frame& frame);
+    float calc_distance_from_frame(const Frame& frame, const std::vector<float>& obs);
 
 
 protected:

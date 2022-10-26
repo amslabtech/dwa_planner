@@ -113,23 +113,23 @@ void DWAPlanner::set_robot_frames(const double front, const double rear, const d
     ROBOT_FRAMES.push_back(frame);
 }
 
-DWAPlanner::Frame::Frame(const float x0, const float y0, const float x1, const float y1)
+DWAPlanner::Frame::Frame(const float x1, const float y1, const float x2, const float y2)
 {
-    float angle0 = atan2(y0, x0);
     float angle1 = atan2(y1, x1);
-    p0[0] = x0;
-    p0[1] = y0;
+    float angle2 = atan2(y2, x2);
     p1[0] = x1;
     p1[1] = y1;
-    if(angle0 > angle1)
+    p2[0] = x2;
+    p2[1] = y2;
+    if(angle1 > angle2)
     {
         this->min_angle = angle1;
-        this->max_angle = angle0;
+        this->max_angle = angle2;
     }
     else
     {
-        this->min_angle = angle0;
-        this->max_angle = angle1;
+        this->min_angle = angle1;
+        this->max_angle = angle2;
     }
 }
 
@@ -472,18 +472,48 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     return cost;
 }
 
-float DWAPlanner::calc_distance_from_robot(const State& state, const std::vector<float>& obs)
-{
-    int direction = judge_nearest_frame(state, obs);
-}
-
 int DWAPlanner::judge_nearest_frame(const State& state, const std::vector<float>& obs)
 {
     float obs_angle = atan2(obs[1]-state.y, obs[0]-state.x);
+    obs_angle -= state.yaw;
     if(obs_angle > ROBOT_FRAMES[DIRECTION::RIGHT].min_angle && obs_angle < ROBOT_FRAMES[DIRECTION::RIGHT].max_angle) return DIRECTION::RIGHT;
     else if(obs_angle > ROBOT_FRAMES[DIRECTION::FRONT].min_angle && obs_angle < ROBOT_FRAMES[DIRECTION::FRONT].max_angle) return DIRECTION::FRONT;
     else if(obs_angle > ROBOT_FRAMES[DIRECTION::LEFT].min_angle && obs_angle < ROBOT_FRAMES[DIRECTION::LEFT].max_angle) return DIRECTION::LEFT;
     else return DIRECTION::REAR;
+}
+
+DWAPlanner::Frame DWAPlanner::transform_nearest_frame(const State& state, const Frame& frame)
+{
+    float x1 = frame.p1[0]*std::cos(state.yaw) - frame.p1[1]*std::cos(state.yaw);
+    float y1 = frame.p1[0]*std::sin(state.yaw) + frame.p1[1]*std::cos(state.yaw);
+    float x2 = frame.p2[0]*std::cos(state.yaw) - frame.p2[1]*std::cos(state.yaw);
+    float y2 = frame.p2[0]*std::sin(state.yaw) + frame.p2[1]*std::cos(state.yaw);
+    Frame transformed_frame(x1, y1, x2, y2);
+    return transformed_frame;
+}
+
+float DWAPlanner::calc_distance_from_frame(const Frame& frame, const std::vector<float>& obs)
+{
+    float dx21 = frame.p2[0] - frame.p1[0];
+    float dy21 = frame.p2[1] - frame.p1[1];
+    float dx10 = frame.p1[0] - obs[0];
+    float dy10 = frame.p1[1] - obs[1];
+    float dx20 = frame.p2[0] - obs[0];
+    float dy20 = frame.p2[1] - obs[1];
+
+    double t = -(dx21*dx10 + dy21*dy10);
+    if(t < 0) return std::hypot(dx10, dy10);
+    else if(t > dx21*dx21 + dy21*dy21) return std::hypot(dx20, dy20);
+    else return sqrt((dx21*dy10 - dy21*dx10) * (dx21*dy20 - dy21*dx20) / (dx21*dx21 + dy21*dy21));
+}
+
+float DWAPlanner::calc_distance_from_robot(const State& state, const std::vector<float>& obs)
+{
+    int direction = judge_nearest_frame(state, obs);
+    Frame nearest_frame = transform_nearest_frame(state, ROBOT_FRAMES[direction]);
+    float dist_from_frame = calc_distance_from_frame(nearest_frame, obs);
+    // float dist_from_base = std::hypot(obs[0]-state.x, obs[1]-state.y);
+    return dist_from_frame;
 }
 
 float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_list, const Eigen::Vector3d& goal)
