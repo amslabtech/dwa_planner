@@ -102,6 +102,10 @@ public:
     int judge_nearest_frame(const State& state, const std::vector<float>& obs);
     Frame transform_nearest_frame(const State& state, const Frame& frame);
     float calc_distance_from_frame(const Frame& frame, const std::vector<float>& obs);
+    void push_back_to_frame_array(const std::vector<Frame>& robot_frame);
+    void push_back_to_nearest_obs_marker(const std::vector<float>& obs);
+    bool is_inside(const State& state, const Frame& frame, const std::vector<float>& obs);
+
 
 
 protected:
@@ -128,6 +132,7 @@ protected:
     double DT;
     bool USE_SCAN_AS_INPUT;
     bool USE_ACTIVE_GAIN;
+    bool VISUALIZE_NEAREST_OBS;
     double GOAL_THRESHOLD;
     double TURN_DIRECTION_THRESHOLD;
     double THRESHOLD_OBS_EDGE_DIST;
@@ -138,6 +143,9 @@ protected:
     float normalization_obstacle_cost;
     float normalization_speed_cost;
     std::vector<Frame> ROBOT_FRAMES;
+    visualization_msgs::MarkerArray robot_frames_marker;
+    visualization_msgs::Marker nearest_obs_marker;
+    int OBS_SEARCH_REDUCTION_RATE;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
@@ -147,6 +155,8 @@ protected:
     ros::Publisher selected_trajectory_pub;
     ros::Publisher gain_pub;
     ros::Publisher edge_gain_pub;
+    ros::Publisher robot_frame_pub;
+    ros::Publisher nearest_obs_pub;
     ros::Subscriber local_map_sub;
     ros::Subscriber scan_sub;
     ros::Subscriber local_goal_sub;

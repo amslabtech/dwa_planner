@@ -13,15 +13,17 @@
         <param name="HZ" value="$(arg hz)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <param name="USE_ACTIVE_GAIN" value="$(arg use_active_gain)"/>
+        <param name="VISUALIZE_NEAREST_OBS" value="true"/>
+        <param name="OBS_SEARCH_REDUCTION_RATE" value="99"/>
         <remap from="/local_map" to="/local_map/expand"/>
         <remap from="/scan" to="/front_laser/scan"/>
         <remap from="/local_goal" to="/local_goal"/>
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
         <remap from="/odom" to="/whill/odom"/>
     </node>
-    <group if="$(arg use_active_gain)">
-        <!-- <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/gain"/> -->
-        <node name="gain_adjust_gui" pkg="rqt_reconfigure" type="rqt_reconfigure"/>
-    </group>
-    <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/edge_gain"/>
+    <!-- <group if="$(arg use_active_gain)"> -->
+    <!--     &#60;&#33;&#45;&#45; <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/gain"/> &#45;&#45;&#62; -->
+    <!--     <node name="gain_adjust_gui" pkg="rqt_reconfigure" type="rqt_reconfigure"/> -->
+    <!-- </group> -->
+    <!-- <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/edge_gain"/> -->
 </launch>

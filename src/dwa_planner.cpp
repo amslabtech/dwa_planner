@@ -38,6 +38,26 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("LEFT_FRAME_DISTANCE", LEFT_FRAME_DISTANCE, {0.5});
     local_nh.param("RIGHT_FRAME_DISTANCE", RIGHT_FRAME_DISTANCE, -LEFT_FRAME_DISTANCE);
     set_robot_frames(FRONT_FRAME_DISTANCE, REAR_FRAME_DISTANCE, LEFT_FRAME_DISTANCE, RIGHT_FRAME_DISTANCE);
+    local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
+    local_nh.param("VISUALIZE_NEAREST_OBS", VISUALIZE_NEAREST_OBS, {false});
+    if(VISUALIZE_NEAREST_OBS)
+    {
+        robot_frame_pub = local_nh.advertise<visualization_msgs::MarkerArray>("robot_frame", 1);
+        nearest_obs_pub = local_nh.advertise<visualization_msgs::Marker>("nearest_obstacle", 1);
+        nearest_obs_marker.header.frame_id = ROBOT_FRAME;
+        nearest_obs_marker.header.stamp = ros::Time::now();
+        nearest_obs_marker.ns = "nearest_obs";
+        nearest_obs_marker.id = 0;
+        nearest_obs_marker.type = visualization_msgs::Marker::SPHERE_LIST;
+        nearest_obs_marker.action = visualization_msgs::Marker::ADD;
+        nearest_obs_marker.pose.orientation.w = 1.0;
+        nearest_obs_marker.scale.x = 0.3;
+        nearest_obs_marker.scale.y = 0.3;
+        nearest_obs_marker.scale.z = 0.3;
+        nearest_obs_marker.color.b = 1.0;
+        nearest_obs_marker.color.a = 1.0;
+        nearest_obs_marker.lifetime = ros::Duration(1.0/HZ);
+    }
     DT = 1.0 / HZ;
 
     ROS_INFO("=== DWA Planner ===");
@@ -66,6 +86,11 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("GOAL_GAIN_RATE: " << GOAL_GAIN_RATE);
     ROS_INFO_STREAM("EDGE_GAIN_RATE: " << EDGE_GAIN_RATE);
     ROS_INFO_STREAM("THRESHOLD_OBS_EDGE_DIST: " << THRESHOLD_OBS_EDGE_DIST);
+    ROS_INFO_STREAM("FRONT_FRAME_DISTANCE: " << FRONT_FRAME_DISTANCE);
+    ROS_INFO_STREAM("REAR_FRAME_DISTANCE: " << REAR_FRAME_DISTANCE);
+    ROS_INFO_STREAM("LEFT_FRAME_DISTANCE: " << LEFT_FRAME_DISTANCE);
+    ROS_INFO_STREAM("RIGHT_FRAME_DISTANCE: " << RIGHT_FRAME_DISTANCE);
+    ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -376,6 +401,12 @@ void DWAPlanner::process(void)
             input_updated = true;
         }
         if(input_updated){
+            if(VISUALIZE_NEAREST_OBS)
+            {
+                robot_frames_marker.markers.clear();
+                nearest_obs_marker.points.clear();
+                nearest_obs_marker.colors.clear();
+            }
             Window dynamic_window = calc_dynamic_window(current_velocity);
             Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
             // Eigen::Vector3d goal(3.0, 0.0, 0);
@@ -397,6 +428,40 @@ void DWAPlanner::process(void)
                 cmd_vel.linear.x = best_traj[0].velocity;
                 cmd_vel.angular.z = best_traj[0].yawrate;
                 visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+                // if(VISUALIZE_NEAREST_OBS)
+                // {
+                //     int count = 0;
+                //     for(const auto& state : best_traj)
+                //     {
+                //         if(count%OBS_SEARCH_REDUCTION_RATE != 0)
+                //         {
+                //             count++;
+                //             continue;
+                //         }
+                //         std::vector<Frame> robot_frame;
+                //         for(int i=0;i<4;i++)
+                //         {
+                //             Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
+                //             robot_frame.push_back(frame);
+                //         }
+                //         push_back_to_frame_array(robot_frame);
+                //         float min_dist = 1e3;
+                //         std::vector<float> nearest_obs;
+                //         for(const auto& obs : obs_list){
+                //             float dist = calc_distance_from_robot(state, obs);
+                //             if(dist <= local_map.info.resolution){
+                //                 nearest_obs = obs;
+                //                 break;
+                //             }
+                //             if(min_dist > dist){
+                //                 min_dist = dist;
+                //                 nearest_obs = obs;
+                //             }
+                //         }
+                //         push_back_to_nearest_obs_marker(nearest_obs);
+                //         count++;
+                //     }
+                // }
             }else{
                 cmd_vel.linear.x = 0.0;
                 if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
@@ -408,6 +473,14 @@ void DWAPlanner::process(void)
             }
             ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
             velocity_pub.publish(cmd_vel);
+            if(VISUALIZE_NEAREST_OBS)
+            {
+                robot_frame_pub.publish(robot_frames_marker);
+                nearest_obs_marker.header.stamp = ros::Time::now();
+                static int id = 0;
+                nearest_obs_marker.id = id++;
+                nearest_obs_pub.publish(nearest_obs_marker);
+            }
 
             odom_updated = false;
         }else{
@@ -457,15 +530,39 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
 {
     float cost = 0.0;
     float min_dist = 1e3;
+    int count = 0;
     for(const auto& state : traj){
+        if(count%OBS_SEARCH_REDUCTION_RATE != 0){
+            count++;
+            continue;
+        }
+        if(VISUALIZE_NEAREST_OBS)
+        {
+            std::vector<Frame> robot_frame;
+            for(int i=0;i<4;i++)
+            {
+                Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
+                robot_frame.push_back(frame);
+            }
+            push_back_to_frame_array(robot_frame);
+        }
+        float state_dist = 1e3;
+        std::vector<float> nearest_obs;
         for(const auto& obs : obs_list){
             float dist = calc_distance_from_robot(state, obs);
             if(dist <= local_map.info.resolution){
                cost = 1e6;
-                return cost;
+               return cost;
             }
             min_dist = std::min(min_dist, dist);
+            if(OBS_SEARCH_REDUCTION_RATE && state_dist > dist)
+            {
+                state_dist = dist;
+                nearest_obs = obs;
+            }
         }
+        if(VISUALIZE_NEAREST_OBS) push_back_to_nearest_obs_marker(nearest_obs);
+        count++;
     }
     cost = 1.0 / min_dist;
     // ROS_INFO_STREAM(cost);
@@ -484,10 +581,10 @@ int DWAPlanner::judge_nearest_frame(const State& state, const std::vector<float>
 
 DWAPlanner::Frame DWAPlanner::transform_nearest_frame(const State& state, const Frame& frame)
 {
-    float x1 = frame.p1[0]*std::cos(state.yaw) - frame.p1[1]*std::cos(state.yaw);
-    float y1 = frame.p1[0]*std::sin(state.yaw) + frame.p1[1]*std::cos(state.yaw);
-    float x2 = frame.p2[0]*std::cos(state.yaw) - frame.p2[1]*std::cos(state.yaw);
-    float y2 = frame.p2[0]*std::sin(state.yaw) + frame.p2[1]*std::cos(state.yaw);
+    float x1 = frame.p1[0]*std::cos(state.yaw) - frame.p1[1]*std::sin(state.yaw) + state.x;
+    float y1 = frame.p1[0]*std::sin(state.yaw) + frame.p1[1]*std::cos(state.yaw) + state.y;
+    float x2 = frame.p2[0]*std::cos(state.yaw) - frame.p2[1]*std::sin(state.yaw) + state.x;
+    float y2 = frame.p2[0]*std::sin(state.yaw) + frame.p2[1]*std::cos(state.yaw) + state.y;
     Frame transformed_frame(x1, y1, x2, y2);
     return transformed_frame;
 }
@@ -504,16 +601,91 @@ float DWAPlanner::calc_distance_from_frame(const Frame& frame, const std::vector
     double t = -(dx21*dx10 + dy21*dy10);
     if(t < 0) return std::hypot(dx10, dy10);
     else if(t > dx21*dx21 + dy21*dy21) return std::hypot(dx20, dy20);
-    else return sqrt((dx21*dy10 - dy21*dx10) * (dx21*dy20 - dy21*dx20) / (dx21*dx21 + dy21*dy21));
+    else return sqrt((dx21*dy10 - dy21*dx10) * (dx21*dy10 - dy21*dx10) / (dx21*dx21 + dy21*dy21));
+}
+
+bool DWAPlanner::is_inside(const State& state, const Frame& frame, const std::vector<float>& obs)
+{
+    std::vector<std::vector<float>> polygon = {{state.x, state.y},
+                                               frame.p1,
+                                               frame.p2,
+                                              };
+    int cn = 0;
+    int n = polygon.size();
+    for(int i=0; i<n; i++)
+    {
+        if(  ((polygon[i][1] <= obs[1]) && (polygon[(i+1)%n][1] > obs[1])) ||
+             ((polygon[i][1] > obs[1]) && (polygon[(i+1)%n][1] <= obs[1])) )
+        {
+            float vt = (obs[1] - polygon[i][1]) / (polygon[(i+1)%n][1] - polygon[i][1]);
+            if(obs[0] < (polygon[i][0] + (vt * (polygon[(i+1)%n][0] - polygon[i][0]) ) ) )
+                cn++;
+        }
+    }
+    if(cn%2 == 0) return false;
+    else
+    {
+        ROS_WARN_STREAM("Oh no! I hit the obstacle!!");
+        return true;
+    }
 }
 
 float DWAPlanner::calc_distance_from_robot(const State& state, const std::vector<float>& obs)
 {
     int direction = judge_nearest_frame(state, obs);
     Frame nearest_frame = transform_nearest_frame(state, ROBOT_FRAMES[direction]);
-    float dist_from_frame = calc_distance_from_frame(nearest_frame, obs);
+    if(is_inside(state, nearest_frame, obs)) return 0.0;
+    else return calc_distance_from_frame(nearest_frame, obs);
     // float dist_from_base = std::hypot(obs[0]-state.x, obs[1]-state.y);
-    return dist_from_frame;
+}
+
+void DWAPlanner::push_back_to_nearest_obs_marker(const std::vector<float>& obs)
+{
+    geometry_msgs::Point point;
+    point.x = obs[0];
+    point.y = obs[1];
+    point.z = 0.01;
+    nearest_obs_marker.points.push_back(point);
+    std_msgs::ColorRGBA color;
+    color.r = 1.0;
+    color.b = 1.0;
+    color.a = 1.0;
+    nearest_obs_marker.colors.push_back(color);
+}
+
+void DWAPlanner::push_back_to_frame_array(const std::vector<Frame>& robot_frame)
+{
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = ROBOT_FRAME;
+    marker.header.stamp = ros::Time();
+    marker.ns = "robot_frame";
+    static int id = 0;
+    marker.id = id++;
+    marker.type = visualization_msgs::Marker::LINE_LIST;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.z = 0.01;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.02;
+    std_msgs::ColorRGBA color;
+    color.r = 0.0;
+    color.g = 0.0;
+    color.b = 1.0;
+    color.a = 1.0;
+    marker.color = color;
+    marker.lifetime = ros::Duration(1/HZ);
+    for(const auto& frame : robot_frame)
+    {
+        geometry_msgs::Point p1, p2;
+        p1.x = frame.p1[0];
+        p1.y = frame.p1[1];
+        p2.x = frame.p2[0];
+        p2.y = frame.p2[1];
+        marker.points.push_back(p1);
+        marker.points.push_back(p2);
+        marker.colors.push_back(color);
+        marker.colors.push_back(color);
+    }
+    robot_frames_marker.markers.push_back(marker);
 }
 
 float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_list, const Eigen::Vector3d& goal)
@@ -708,3 +880,4 @@ void DWAPlanner::visualize_trajectory(const std::vector<State>& trajectory, cons
     }
     pub.publish(v_trajectory);
 }
+
