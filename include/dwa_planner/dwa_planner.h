@@ -106,8 +106,6 @@ public:
     void push_back_to_nearest_obs_marker(const std::vector<float>& obs);
     bool is_inside(const State& state, const Frame& frame, const std::vector<float>& obs);
 
-
-
 protected:
     double HZ;
     std::string ROBOT_FRAME;

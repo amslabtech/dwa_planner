@@ -21,9 +21,9 @@
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
         <remap from="/odom" to="/whill/odom"/>
     </node>
-    <!-- <group if="$(arg use_active_gain)"> -->
-    <!--     &#60;&#33;&#45;&#45; <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/gain"/> &#45;&#45;&#62; -->
-    <!--     <node name="gain_adjust_gui" pkg="rqt_reconfigure" type="rqt_reconfigure"/> -->
-    <!-- </group> -->
-    <!-- <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/edge_gain"/> -->
+    <group if="$(arg use_active_gain)">
+        <!-- <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/gain"/> -->
+        <node name="gain_adjust_gui" pkg="rqt_reconfigure" type="rqt_reconfigure"/>
+    </group>
+    <node name="gain_plot" pkg="rqt_plot" type="rqt_plot" args="/edge_gain"/>
 </launch>

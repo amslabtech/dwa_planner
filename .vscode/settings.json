@@ -1,0 +1,6 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/noetic/lib/python3/dist-packages",
+        "/home/amsl/ros_catkin_ws/devel/lib/python3/dist-packages"
+    ]
+}

@@ -345,15 +345,12 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
                 float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
                 float obstacle_cost = calc_obstacle_cost(traj, obs_list);
                 float to_edge_cost = calc_to_edge_cost(traj, goal);
-                float final_cost =
-                    TO_GOAL_COST_GAIN*to_goal_cost +
-                    SPEED_COST_GAIN*speed_cost +
-                    OBSTACLE_COST_GAIN*obstacle_cost +
-                    TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
+                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
 
                 if(min_cost >= final_cost){
                     min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                    min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
+                    min_edge_cost = TO_EDGE_COST_GAIN*to_edge_cost;
+                    min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost; //erase above
                     min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
                     min_speed_cost = SPEED_COST_GAIN*speed_cost;
                     min_cost = final_cost;
@@ -549,10 +546,11 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
         float state_dist = 1e3;
         std::vector<float> nearest_obs;
         for(const auto& obs : obs_list){
-            float dist = calc_distance_from_robot(state, obs);
+            float dist = sqrt((state.x - obs[0])*(state.x - obs[0]) + (state.y - obs[1])*(state.y - obs[1]));
+            //float dist = calc_distance_from_robot(state, obs); //erase avobe
             if(dist <= local_map.info.resolution){
-               cost = 1e6;
-               return cost;
+                cost = 1e6;
+                return cost;
             }
             min_dist = std::min(min_dist, dist);
             if(OBS_SEARCH_REDUCTION_RATE && state_dist > dist)
@@ -738,7 +736,8 @@ float DWAPlanner::calc_to_edge_cost(const std::vector<State>& traj, const Eigen:
     }
     // Eigen::Vector3d last_position(traj.back().x, traj.back().y, traj.back().yaw);
     // double d = std::fabs(a*last_position(0) - last_position(1) + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-    return pile_d/i;
+    return pile_d;
+    return pile_d/i; //erase avobe
 }
 
 std::vector<float> DWAPlanner::calc_each_gain(const float pile_weight_obstacle_cost)
