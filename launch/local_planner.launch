@@ -14,7 +14,7 @@
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <param name="USE_ACTIVE_GAIN" value="$(arg use_active_gain)"/>
         <param name="VISUALIZE_NEAREST_OBS" value="true"/>
-        <param name="OBS_SEARCH_REDUCTION_RATE" value="99"/>
+        <param name="OBS_SEARCH_REDUCTION_RATE" value="10"/>
         <remap from="/local_map" to="/local_map/expand"/>
         <remap from="/scan" to="/front_laser/scan"/>
         <remap from="/local_goal" to="/local_goal"/>

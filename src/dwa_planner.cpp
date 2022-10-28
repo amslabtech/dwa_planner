@@ -345,12 +345,10 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
                 float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
                 float obstacle_cost = calc_obstacle_cost(traj, obs_list);
                 float to_edge_cost = calc_to_edge_cost(traj, goal);
-                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*to_edge_cost;
                 float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
                 if(min_cost >= final_cost){
                     min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                    min_edge_cost = TO_EDGE_COST_GAIN*to_edge_cost;
-                    min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost; //erase above
+                    min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
                     min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
                     min_speed_cost = SPEED_COST_GAIN*speed_cost;
                     min_cost = final_cost;
@@ -425,40 +423,40 @@ void DWAPlanner::process(void)
                 cmd_vel.linear.x = best_traj[0].velocity;
                 cmd_vel.angular.z = best_traj[0].yawrate;
                 visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
-                // if(VISUALIZE_NEAREST_OBS)
-                // {
-                //     int count = 0;
-                //     for(const auto& state : best_traj)
-                //     {
-                //         if(count%OBS_SEARCH_REDUCTION_RATE != 0)
-                //         {
-                //             count++;
-                //             continue;
-                //         }
-                //         std::vector<Frame> robot_frame;
-                //         for(int i=0;i<4;i++)
-                //         {
-                //             Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
-                //             robot_frame.push_back(frame);
-                //         }
-                //         push_back_to_frame_array(robot_frame);
-                //         float min_dist = 1e3;
-                //         std::vector<float> nearest_obs;
-                //         for(const auto& obs : obs_list){
-                //             float dist = calc_distance_from_robot(state, obs);
-                //             if(dist <= local_map.info.resolution){
-                //                 nearest_obs = obs;
-                //                 break;
-                //             }
-                //             if(min_dist > dist){
-                //                 min_dist = dist;
-                //                 nearest_obs = obs;
-                //             }
-                //         }
-                //         push_back_to_nearest_obs_marker(nearest_obs);
-                //         count++;
-                //     }
-                // }
+                if(VISUALIZE_NEAREST_OBS)
+                {
+                    int count = 0;
+                    for(const auto& state : best_traj)
+                    {
+                        if(count%OBS_SEARCH_REDUCTION_RATE != 0)
+                        {
+                            count++;
+                            continue;
+                        }
+                        std::vector<Frame> robot_frame;
+                        for(int i=0;i<4;i++)
+                        {
+                            Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
+                            robot_frame.push_back(frame);
+                        }
+                        push_back_to_frame_array(robot_frame);
+                        float min_dist = 1e3;
+                        std::vector<float> nearest_obs;
+                        for(const auto& obs : obs_list){
+                            float dist = calc_distance_from_robot(state, obs);
+                            if(dist <= local_map.info.resolution){
+                                nearest_obs = obs;
+                                break;
+                            }
+                            if(min_dist > dist){
+                                min_dist = dist;
+                                nearest_obs = obs;
+                            }
+                        }
+                        push_back_to_nearest_obs_marker(nearest_obs);
+                        count++;
+                    }
+                }
             }else{
                 cmd_vel.linear.x = 0.0;
                 if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
@@ -533,33 +531,32 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
             count++;
             continue;
         }
-        if(VISUALIZE_NEAREST_OBS)
-        {
-            std::vector<Frame> robot_frame;
-            for(int i=0;i<4;i++)
-            {
-                Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
-                robot_frame.push_back(frame);
-            }
-            push_back_to_frame_array(robot_frame);
-        }
+        // if(VISUALIZE_NEAREST_OBS)
+        // {
+        //     std::vector<Frame> robot_frame;
+        //     for(int i=0;i<4;i++)
+        //     {
+        //         Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
+        //         robot_frame.push_back(frame);
+        //     }
+        //     push_back_to_frame_array(robot_frame);
+        // }
         float state_dist = 1e3;
         std::vector<float> nearest_obs;
         for(const auto& obs : obs_list){
-            float dist = sqrt((state.x - obs[0])*(state.x - obs[0]) + (state.y - obs[1])*(state.y - obs[1]));
-            //float dist = calc_distance_from_robot(state, obs); //erase avobe
+            float dist = calc_distance_from_robot(state, obs);
             if(dist <= local_map.info.resolution){
                 cost = 1e6;
                 return cost;
             }
             min_dist = std::min(min_dist, dist);
-            if(OBS_SEARCH_REDUCTION_RATE && state_dist > dist)
+            if(VISUALIZE_NEAREST_OBS && state_dist > dist)
             {
                 state_dist = dist;
                 nearest_obs = obs;
             }
         }
-        if(VISUALIZE_NEAREST_OBS) push_back_to_nearest_obs_marker(nearest_obs);
+        // if(VISUALIZE_NEAREST_OBS) push_back_to_nearest_obs_marker(nearest_obs);
         count++;
     }
     cost = 1.0 / min_dist;
@@ -736,8 +733,7 @@ float DWAPlanner::calc_to_edge_cost(const std::vector<State>& traj, const Eigen:
     }
     // Eigen::Vector3d last_position(traj.back().x, traj.back().y, traj.back().yaw);
     // double d = std::fabs(a*last_position(0) - last_position(1) + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-    return pile_d;
-    return pile_d/i; //erase avobe
+    return pile_d/i;
 }
 
 std::vector<float> DWAPlanner::calc_each_gain(const float pile_weight_obstacle_cost)
