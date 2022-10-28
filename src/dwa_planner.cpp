@@ -322,8 +322,8 @@ void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStam
             double goal_yaw = tf::getYaw(goal.pose.orientation);
             double pose_yaw = tf::getYaw(pose.pose.pose.orientation);
             double diff_abs = fabs(goal_yaw - pose_yaw);
-            if(diff_abs > M_PI) diff_abs -= 2*M_PI;
-            if(diff_abs < -M_PI) diff_abs += 2*M_PI;
+            // if(diff_abs > M_PI) diff_abs -= 2*M_PI;
+            // if(diff_abs < -M_PI) diff_abs += 2*M_PI;
             if(diff_abs < 0.2) turn_flag = false;
         }
         else flag = false;
