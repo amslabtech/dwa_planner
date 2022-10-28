@@ -107,8 +107,10 @@ DWAPlanner::DWAPlanner(void)
     }
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
+    current_checkpoint_sub = nh.subscribe("/current_checkpoint", 1, &DWAPlanner::current_checkpoint_callback, this);
+    current_pose_sub = nh.subscribe("/current_pose", 1, &DWAPlanner::current_pose_callback, this);
 
-
+    previous_checkpoint = current_checkpoint = -1;
 }
 
 DWAPlanner::State::State(double _x, double _y, double _yaw, double _velocity, double _yawrate)
@@ -196,6 +198,16 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
 {
     TARGET_VELOCITY = msg->linear.x;
     ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
+}
+
+void DWAPlanner::current_checkpoint_callback(const std_msgs::Int32ConstPtr& msg)
+{
+    current_checkpoint = msg->data;
+}
+
+void DWAPlanner::current_pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+{
+    current_pose = *msg;
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
@@ -375,6 +387,26 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     return best_traj;
 }
 
+void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStamped& pose, const geometry_msgs::PoseStamped& goal, int& p_checkpoint, int& c_checkpoint, bool& flag)
+{
+    if(p_checkpoint == -1 || c_checkpoint == -1) flag = false;
+
+    if(p_checkpoint == c_checkpoint) {
+        if(turn_flag == true) {
+            double goal_yaw = tf::getYaw(goal.pose.orientation);
+            double pose_yaw = tf::getYaw(pose.pose.pose.orientation);
+            double diff_abs = fabs(goal_yaw - pose_yaw);
+            // if(diff_abs > M_PI) diff_abs -= 2*M_PI;
+            // if(diff_abs < -M_PI) diff_abs += 2*M_PI;
+            if(diff_abs < 0.2) turn_flag = false;
+        }
+        else flag = false;
+    }
+    else flag = true;
+    p_checkpoint = c_checkpoint;
+    // flag = false;
+}
+
 void DWAPlanner::process(void)
 {
     ros::Rate loop_rate(HZ);
@@ -395,89 +427,108 @@ void DWAPlanner::process(void)
         }else if(!USE_SCAN_AS_INPUT && local_map_updated){
             input_updated = true;
         }
-        if(input_updated){
+        if(input_updated && local_goal_subscribed && odom_updated){
             if(VISUALIZE_NEAREST_OBS)
             {
                 robot_frames_marker.markers.clear();
                 nearest_obs_marker.points.clear();
                 nearest_obs_marker.colors.clear();
             }
-            Window dynamic_window = calc_dynamic_window(current_velocity);
-            Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
-            // Eigen::Vector3d goal(3.0, 0.0, 0);
-            ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
+            turn_until_straight(current_pose, local_goal_map_frame, previous_checkpoint, current_checkpoint, turn_flag);
+            if(turn_flag){
+                double goal_yaw = tf::getYaw(local_goal_map_frame.pose.orientation);
+                double pose_yaw = tf::getYaw(current_pose.pose.pose.orientation);
+                double yaw_diff = goal_yaw - pose_yaw;
+                if(yaw_diff > M_PI) yaw_diff -= 2*M_PI;
+                if(yaw_diff < -M_PI) yaw_diff += 2*M_PI;
 
-            geometry_msgs::Twist cmd_vel;
-            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
-                std::vector<std::vector<float>> obs_list;
-                if(USE_SCAN_AS_INPUT){
-                    obs_list = scan_to_obs();
-                    scan_updated = false;
-                }else{
-                    obs_list = raycast();
-                    local_map_updated = false;
-                }
+                geometry_msgs::Twist cmd_vel;
+                cmd_vel.linear.x = 0.0;
+                cmd_vel.angular.z = MAX_YAWRATE / 5.0 * yaw_diff / fabs(yaw_diff);
+                ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
+                velocity_pub.publish(cmd_vel);
 
-                std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
+                scan_updated = false;
+                local_map_updated = false;
+                odom_updated = false;
+            }else{
+                Window dynamic_window = calc_dynamic_window(current_velocity);
+                Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
+                // Eigen::Vector3d goal(3.0, 0.0, 0);
+                ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
 
-                cmd_vel.linear.x = best_traj[0].velocity;
-                cmd_vel.angular.z = best_traj[0].yawrate;
-                visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
-                if(VISUALIZE_NEAREST_OBS)
-                {
-                    int count = 0;
-                    for(const auto& state : best_traj)
+                geometry_msgs::Twist cmd_vel;
+                if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
+                    std::vector<std::vector<float>> obs_list;
+                    if(USE_SCAN_AS_INPUT){
+                        obs_list = scan_to_obs();
+                        scan_updated = false;
+                    }else{
+                        obs_list = raycast();
+                        local_map_updated = false;
+                    }
+
+                    std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
+
+                    cmd_vel.linear.x = best_traj[0].velocity;
+                    cmd_vel.angular.z = best_traj[0].yawrate;
+                    visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+                    if(VISUALIZE_NEAREST_OBS)
                     {
-                        if(count%OBS_SEARCH_REDUCTION_RATE != 0)
+                        int count = 0;
+                        for(const auto& state : best_traj)
                         {
+                            if(count%OBS_SEARCH_REDUCTION_RATE != 0)
+                            {
+                                count++;
+                                continue;
+                            }
+                            std::vector<Frame> robot_frame;
+                            for(int i=0;i<4;i++)
+                            {
+                                Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
+                                robot_frame.push_back(frame);
+                            }
+                            push_back_to_frame_array(robot_frame);
+                            float min_dist = 1e3;
+                            std::vector<float> nearest_obs;
+                            for(const auto& obs : obs_list){
+                                float dist = calc_distance_from_robot(state, obs);
+                                if(dist <= local_map.info.resolution){
+                                    nearest_obs = obs;
+                                    break;
+                                }
+                                if(min_dist > dist){
+                                    min_dist = dist;
+                                    nearest_obs = obs;
+                                }
+                            }
+                            push_back_to_nearest_obs_marker(nearest_obs);
                             count++;
-                            continue;
                         }
-                        std::vector<Frame> robot_frame;
-                        for(int i=0;i<4;i++)
-                        {
-                            Frame frame = transform_nearest_frame(state, ROBOT_FRAMES[i]);
-                            robot_frame.push_back(frame);
-                        }
-                        push_back_to_frame_array(robot_frame);
-                        float min_dist = 1e3;
-                        std::vector<float> nearest_obs;
-                        for(const auto& obs : obs_list){
-                            float dist = calc_distance_from_robot(state, obs);
-                            if(dist <= local_map.info.resolution){
-                                nearest_obs = obs;
-                                break;
-                            }
-                            if(min_dist > dist){
-                                min_dist = dist;
-                                nearest_obs = obs;
-                            }
-                        }
-                        push_back_to_nearest_obs_marker(nearest_obs);
-                        count++;
+                    }
+                }else{
+                    cmd_vel.linear.x = 0.0;
+                    if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
+                        cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+                    }
+                    else{
+                        cmd_vel.angular.z = 0.0;
                     }
                 }
-            }else{
-                cmd_vel.linear.x = 0.0;
-                if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
-                    cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+                ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
+                velocity_pub.publish(cmd_vel);
+                if(VISUALIZE_NEAREST_OBS)
+                {
+                    robot_frame_pub.publish(robot_frames_marker);
+                    nearest_obs_marker.header.stamp = ros::Time::now();
+                    static int id = 0;
+                    nearest_obs_marker.id = id++;
+                    nearest_obs_pub.publish(nearest_obs_marker);
                 }
-                else{
-                    cmd_vel.angular.z = 0.0;
-                }
-            }
-            ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
-            velocity_pub.publish(cmd_vel);
-            if(VISUALIZE_NEAREST_OBS)
-            {
-                robot_frame_pub.publish(robot_frames_marker);
-                nearest_obs_marker.header.stamp = ros::Time::now();
-                static int id = 0;
-                nearest_obs_marker.id = id++;
-                nearest_obs_pub.publish(nearest_obs_marker);
-            }
 
-            odom_updated = false;
+                odom_updated = false;
+            }
         }else{
             if(!local_goal_subscribed){
                 ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
@@ -550,11 +601,11 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
                 return cost;
             }
             min_dist = std::min(min_dist, dist);
-            if(VISUALIZE_NEAREST_OBS && state_dist > dist)
-            {
-                state_dist = dist;
-                nearest_obs = obs;
-            }
+            // if(VISUALIZE_NEAREST_OBS && state_dist > dist)
+            // {
+            //     state_dist = dist;
+            //     nearest_obs = obs;
+            // }
         }
         // if(VISUALIZE_NEAREST_OBS) push_back_to_nearest_obs_marker(nearest_obs);
         count++;
