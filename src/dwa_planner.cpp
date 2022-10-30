@@ -387,8 +387,10 @@ void DWAPlanner::turn_until_straight(const geometry_msgs::PoseStamped& goal, int
 
     if(p_checkpoint == c_checkpoint) {
         if(turn_flag == true) {
-            double goal_yaw = tf::getYaw(goal.pose.orientation);
-            double diff_abs = fabs(goal_yaw);
+            // double goal_yaw = tf::getYaw(goal.pose.orientation);
+            // double diff_abs = fabs(goal_yaw);
+            double to_goal_angle = atan2(goal.pose.position.y, goal.pose.position.x);
+            double diff_abs = fabs(to_goal_angle);
             if(diff_abs < 0.2) turn_flag = false;
         }
         else flag = false;
