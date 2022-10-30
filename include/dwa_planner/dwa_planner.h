@@ -5,7 +5,6 @@
 #include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -89,7 +88,6 @@ public:
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
     Window calc_dynamic_window(const geometry_msgs::Twist&);
     void current_checkpoint_callback(const std_msgs::Int32ConstPtr&);
-    void current_pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr&);
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     float calc_to_edge_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
@@ -110,7 +108,7 @@ public:
     void push_back_to_frame_array(const std::vector<Frame>& robot_frame);
     void push_back_to_nearest_obs_marker(const std::vector<float>& obs);
     bool is_inside(const State& state, const Frame& frame, const std::vector<float>& obs);
-    void turn_until_straight(const geometry_msgs::PoseWithCovarianceStamped& pose, const geometry_msgs::PoseStamped& goal, int& p_checkpoint, int& c_checkpoint, bool& flag);
+    void turn_until_straight(const geometry_msgs::PoseStamped& goal, int& p_checkpoint, int& c_checkpoint, bool& flag);
 
 protected:
     double HZ;
@@ -169,7 +167,6 @@ protected:
     ros::Subscriber odom_sub;
     ros::Subscriber target_velocity_sub;
     ros::Subscriber current_checkpoint_sub;
-    ros::Subscriber current_pose_sub;
     tf::TransformListener listener;
 
     geometry_msgs::PoseStamped local_goal;
@@ -178,11 +175,7 @@ protected:
     geometry_msgs::Twist current_velocity;
     dynamic_reconfigure::Server<dwa_planner::GainSlopeConfig> server;
     dynamic_reconfigure::Server<dwa_planner::GainSlopeConfig>::CallbackType f;
-    geometry_msgs::PoseWithCovarianceStamped current_pose;
-    geometry_msgs::PoseStamped local_goal_map_frame;
 
-    // Eigen::Vector3d old_goal(0.0,0.0,0.0);
-    // Eigen::Vector3d goal(0.0,0.0,0.0);
     bool local_goal_subscribed;
     bool scan_updated;
     bool local_map_updated;

@@ -108,7 +108,6 @@ DWAPlanner::DWAPlanner(void)
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
     current_checkpoint_sub = nh.subscribe("/current_checkpoint", 1, &DWAPlanner::current_checkpoint_callback, this);
-    current_pose_sub = nh.subscribe("/current_pose", 1, &DWAPlanner::current_pose_callback, this);
 
     previous_checkpoint = current_checkpoint = -1;
 }
@@ -203,11 +202,6 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
 void DWAPlanner::current_checkpoint_callback(const std_msgs::Int32ConstPtr& msg)
 {
     current_checkpoint = msg->data;
-}
-
-void DWAPlanner::current_pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
-{
-    current_pose = *msg;
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
@@ -387,17 +381,14 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     return best_traj;
 }
 
-void DWAPlanner::turn_until_straight(const geometry_msgs::PoseWithCovarianceStamped& pose, const geometry_msgs::PoseStamped& goal, int& p_checkpoint, int& c_checkpoint, bool& flag)
+void DWAPlanner::turn_until_straight(const geometry_msgs::PoseStamped& goal, int& p_checkpoint, int& c_checkpoint, bool& flag)
 {
     if(p_checkpoint == -1 || c_checkpoint == -1) flag = false;
 
     if(p_checkpoint == c_checkpoint) {
         if(turn_flag == true) {
             double goal_yaw = tf::getYaw(goal.pose.orientation);
-            double pose_yaw = tf::getYaw(pose.pose.pose.orientation);
-            double diff_abs = fabs(goal_yaw - pose_yaw);
-            // if(diff_abs > M_PI) diff_abs -= 2*M_PI;
-            // if(diff_abs < -M_PI) diff_abs += 2*M_PI;
+            double diff_abs = fabs(goal_yaw);
             if(diff_abs < 0.2) turn_flag = false;
         }
         else flag = false;
@@ -434,17 +425,13 @@ void DWAPlanner::process(void)
                 nearest_obs_marker.points.clear();
                 nearest_obs_marker.colors.clear();
             }
-            turn_until_straight(current_pose, local_goal_map_frame, previous_checkpoint, current_checkpoint, turn_flag);
+            turn_until_straight(local_goal, previous_checkpoint, current_checkpoint, turn_flag);
             if(turn_flag){
-                double goal_yaw = tf::getYaw(local_goal_map_frame.pose.orientation);
-                double pose_yaw = tf::getYaw(current_pose.pose.pose.orientation);
-                double yaw_diff = goal_yaw - pose_yaw;
-                if(yaw_diff > M_PI) yaw_diff -= 2*M_PI;
-                if(yaw_diff < -M_PI) yaw_diff += 2*M_PI;
+                double goal_yaw = tf::getYaw(local_goal.pose.orientation);
 
                 geometry_msgs::Twist cmd_vel;
                 cmd_vel.linear.x = 0.0;
-                cmd_vel.angular.z = MAX_YAWRATE / 5.0 * yaw_diff / fabs(yaw_diff);
+                cmd_vel.angular.z = MAX_YAWRATE / 5.0 * goal_yaw / fabs(goal_yaw);
                 ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
                 velocity_pub.publish(cmd_vel);
 
