@@ -326,16 +326,16 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
         }
     }
 
-    else
+    else //USE_ACTIVE_GAIN false
     {
 
-        float weight_edge_cost = calc_obs_to_edge(obs_list, goal);
-        dwa_planner::Edge_Gain edge_gain;
-        edge_gain.to_edge_gain = weight_edge_cost;
-        edge_gain_pub.publish(edge_gain);
+        // float weight_edge_cost = calc_obs_to_edge(obs_list, goal);
+        // dwa_planner::Edge_Gain edge_gain;
+        // edge_gain.to_edge_gain = weight_edge_cost;
+        // edge_gain_pub.publish(edge_gain);
 
-        ROS_INFO_STREAM("weight_edge_cost");
-        ROS_INFO_STREAM(weight_edge_cost);
+        // ROS_INFO_STREAM("weight_edge_cost");
+        // ROS_INFO_STREAM(weight_edge_cost);
 
         for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
             for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
@@ -350,11 +350,12 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
                 float to_goal_cost = calc_to_goal_cost(traj, goal);
                 float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
                 float obstacle_cost = calc_obstacle_cost(traj, obs_list);
-                float to_edge_cost = calc_to_edge_cost(traj, goal);
-                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
+                // float to_edge_cost = calc_to_edge_cost(traj, goal);
+                // float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
+                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost;
                 if(min_cost >= final_cost){
                     min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                    min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
+                    // min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
                     min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
                     min_speed_cost = SPEED_COST_GAIN*speed_cost;
                     min_cost = final_cost;
@@ -366,7 +367,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
 
     ROS_INFO_STREAM("Cost: " << min_cost);
     ROS_INFO_STREAM("- Goal cost: " << min_goal_cost);
-    ROS_INFO_STREAM("- Edge cost: " << min_edge_cost);
+    // ROS_INFO_STREAM("- Edge cost: " << min_edge_cost);
     ROS_INFO_STREAM("- Obs cost: " << min_obs_cost);
     ROS_INFO_STREAM("- Speed cost: " << min_speed_cost);
     ROS_INFO_STREAM("num of trajectories: " << trajectories.size());
@@ -387,15 +388,19 @@ void DWAPlanner::turn_until_straight(const geometry_msgs::PoseStamped& goal, int
 
     if(p_checkpoint == c_checkpoint) {
         if(turn_flag == true) {
-            // double goal_yaw = tf::getYaw(goal.pose.orientation);
-            // double diff_abs = fabs(goal_yaw);
             double to_goal_angle = atan2(goal.pose.position.y, goal.pose.position.x);
             double diff_abs = fabs(to_goal_angle);
             if(diff_abs < 0.2) turn_flag = false;
         }
         else flag = false;
     }
-    else flag = true;
+    else
+    {
+        flag = true;
+        double to_goal_angle = atan2(goal.pose.position.y, goal.pose.position.x);
+        double diff_abs = fabs(to_goal_angle);
+        if(diff_abs < 0.2) turn_flag = false;
+    }
     p_checkpoint = c_checkpoint;
     // flag = false;
 }
@@ -433,7 +438,7 @@ void DWAPlanner::process(void)
 
                 geometry_msgs::Twist cmd_vel;
                 cmd_vel.linear.x = 0.0;
-                cmd_vel.angular.z = MAX_YAWRATE / 5.0 * goal_yaw / fabs(goal_yaw);
+                cmd_vel.angular.z = MAX_YAWRATE / 3.0 * goal_yaw / fabs(goal_yaw);
                 ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
                 velocity_pub.publish(cmd_vel);
 

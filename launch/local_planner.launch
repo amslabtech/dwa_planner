@@ -13,7 +13,7 @@
         <param name="HZ" value="$(arg hz)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <param name="USE_ACTIVE_GAIN" value="$(arg use_active_gain)"/>
-        <param name="VISUALIZE_NEAREST_OBS" value="true"/>
+        <param name="VISUALIZE_NEAREST_OBS" value="false"/>
         <param name="OBS_SEARCH_REDUCTION_RATE" value="5"/>
         <remap from="/local_map" to="/local_map/expand"/>
         <remap from="/scan" to="/front_laser/scan"/>
