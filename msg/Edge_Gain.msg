@@ -1,1 +1,0 @@
-float64 to_edge_gain
