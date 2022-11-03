@@ -17,17 +17,9 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
     local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
     local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
-    local_nh.param("TO_EDGE_COST_GAIN", TO_EDGE_COST_GAIN, {1.0});
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
-    local_nh.param("GAIN_SLOPE", GAIN_SLOPE, {0.1});
-    local_nh.param("GAIN_INTERCEPT", GAIN_INTERCEPT, {0.01});
-    local_nh.param("SPEED_GAIN_RATE", SPEED_GAIN_RATE, {0.2});
-    local_nh.param("GOAL_GAIN_RATE", GOAL_GAIN_RATE, {0.5});
-    local_nh.param("EDGE_GAIN_RATE", EDGE_GAIN_RATE, {0.3});
-    local_nh.param("GAIN_INTERCEPT", GAIN_INTERCEPT, {0.01});
     local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
-    local_nh.param("USE_ACTIVE_GAIN", USE_ACTIVE_GAIN, {false});
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("THRESHOLD_OBS_EDGE_DIST", THRESHOLD_OBS_EDGE_DIST, {2.0});
@@ -78,13 +70,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << TO_GOAL_COST_GAIN);
     ROS_INFO_STREAM("SPEED_COST_GAIN: " << SPEED_COST_GAIN);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << OBSTACLE_COST_GAIN);
-    ROS_INFO_STREAM("GAIN_SLOPE: " << GAIN_SLOPE);
-    ROS_INFO_STREAM("GAIN_INTERCEPT: " << GAIN_INTERCEPT);
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << GOAL_THRESHOLD);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
-    ROS_INFO_STREAM("SPEED_GAIN_RATE: " << SPEED_GAIN_RATE);
-    ROS_INFO_STREAM("GOAL_GAIN_RATE: " << GOAL_GAIN_RATE);
-    ROS_INFO_STREAM("EDGE_GAIN_RATE: " << EDGE_GAIN_RATE);
     ROS_INFO_STREAM("THRESHOLD_OBS_EDGE_DIST: " << THRESHOLD_OBS_EDGE_DIST);
     ROS_INFO_STREAM("FRONT_FRAME_DISTANCE: " << FRONT_FRAME_DISTANCE);
     ROS_INFO_STREAM("REAR_FRAME_DISTANCE: " << REAR_FRAME_DISTANCE);
@@ -96,10 +83,8 @@ DWAPlanner::DWAPlanner(void)
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
     selected_trajectory_pub = local_nh.advertise<visualization_msgs::Marker>("selected_trajectory", 1);
 
-    gain_pub = nh.advertise<dwa_planner::Gain>("/gain", 1);
-    edge_gain_pub = nh.advertise<dwa_planner::Edge_Gain>("/edge_gain", 1);
-
     local_goal_sub = nh.subscribe("/local_goal", 1, &DWAPlanner::local_goal_callback, this);
+    detect_line_sub = nh.subscribe("/detect_line", 1, &DWAPlanner::detect_line_callback, this);
     if(USE_SCAN_AS_INPUT){
         scan_sub = nh.subscribe("/scan", 1, &DWAPlanner::scan_callback, this);
     }else{
@@ -170,9 +155,9 @@ void DWAPlanner::local_goal_callback(const geometry_msgs::PoseStampedConstPtr& m
     }
 }
 
-void DWAPlanner::gain_slope_callback(const dwa_planner::GainSlopeConfig& msg)
+void DWAPlanner::detect_line_callback(const std_msgs::Bool &msg)
 {
-    GAIN_SLOPE = msg.gain_slope;
+    detect_line_flag = msg.data;
 }
 
 void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr& msg)
@@ -218,156 +203,34 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
 
-    if(USE_ACTIVE_GAIN)
-    {
-        //for active gain
-        float max_goal_cost = 0.0;
-        float max_edge_cost = 0.0;
-        float max_speed_cost = 0.0;
-        float max_obs_cost = 0.0;
-
-        std::vector<Cost> costs;
-
-        for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-            for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
-                State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
-                std::vector<State> traj;
-                Cost cost;
-
-                for(float t=0; t<=PREDICT_TIME; t+=DT){
-                    motion(state, v, y);
-                    traj.push_back(state);
-                }
-                trajectories.push_back(traj);
-
-                float to_goal_cost = calc_to_goal_cost(traj, goal);
-                float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
-                float obstacle_cost = calc_obstacle_cost(traj, obs_list);
-                float to_edge_cost = calc_to_edge_cost(traj, goal);
-
-                if(to_goal_cost > max_goal_cost) max_goal_cost = to_goal_cost;
-                if(to_goal_cost < min_goal_cost) min_goal_cost = to_goal_cost;
-
-                if(speed_cost > max_speed_cost) max_speed_cost = speed_cost;
-                if(speed_cost < min_speed_cost) min_speed_cost = speed_cost;
-
-                if(obstacle_cost != 1e6 && obstacle_cost > max_obs_cost) max_obs_cost = obstacle_cost;
-                if(min_obs_cost != 1e6 && obstacle_cost < min_obs_cost) min_obs_cost = obstacle_cost;
-
-                if(to_edge_cost > max_edge_cost) max_edge_cost = to_edge_cost;
-                if(to_edge_cost < min_edge_cost) min_edge_cost = to_edge_cost;
-
-                cost.to_goal_cost = to_goal_cost;
-                cost.speed_cost = speed_cost;
-                cost.obstacle_cost = obstacle_cost;
-                cost.to_edge_cost = to_edge_cost;
-                cost.traj = traj;
-                costs.push_back(cost);
+    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
+        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
+            State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
+            std::vector<State> traj;
+            for(float t=0; t<=PREDICT_TIME; t+=DT){
+                motion(state, v, y);
+                traj.push_back(state);
             }
-        }
+            trajectories.push_back(traj);
 
-        float pile_weight_obstacle_cost = 0.0;
-        float pile_weight = 0.0;
-        for(const auto& cost : costs)
-        {
-            float to_goal_cost = cost.to_goal_cost;
-            float to_obstacle_distance = 1 / cost.obstacle_cost; //from obstacle_cost to distance
-            float weight = (max_goal_cost - to_goal_cost) / max_goal_cost;
-            if(weight < 0.0001) weight = 0.0001;
-            pile_weight += weight;
-            pile_weight_obstacle_cost += weight * to_obstacle_distance;
-        }
-        pile_weight_obstacle_cost /= pile_weight;
-        std::vector<float> each_gain = calc_each_gain(pile_weight_obstacle_cost);
-
-        for(const auto& cost : costs)
-        {
-            if((max_goal_cost - min_goal_cost) < 0.0001) normalization_to_goal_cost = 1.0;
-            else  normalization_to_goal_cost = (cost.to_goal_cost - min_goal_cost) / (max_goal_cost - min_goal_cost);
-
-            if((max_speed_cost - min_speed_cost) < 0.0001) normalization_speed_cost = 1.0;
-            else  normalization_speed_cost = (cost.speed_cost - min_speed_cost) / (max_speed_cost - min_speed_cost);
-
-            if((max_obs_cost - min_obs_cost) < 0.0001) normalization_obstacle_cost = 1.0;
-            else  normalization_obstacle_cost = (cost.obstacle_cost - min_obs_cost) / (max_obs_cost - min_obs_cost);
-
-            if((max_edge_cost - min_edge_cost) < 0.0001) normalization_to_edge_cost = 1.0;
-            else  normalization_to_edge_cost = (cost.to_edge_cost - min_edge_cost) / (max_edge_cost - min_edge_cost);
-
-            float final_cost =
-                each_gain[0]*normalization_to_goal_cost +
-                each_gain[2]*normalization_speed_cost +
-                each_gain[3]*normalization_obstacle_cost +
-                each_gain[1]*normalization_to_edge_cost;
-            // ROS_INFO_STREAM(each_gain[2]*normalization_speed_cost);
-            // float final_cost =
-            //     each_gain[0]*cost.to_goal_cost +
-            //     each_gain[2]*cost.speed_cost +
-            //     each_gain[3]*cost.obstacle_cost +
-            //     each_gain[1]*cost.to_edge_cost;
-
+            float to_goal_cost = calc_to_goal_cost(traj, goal);
+            float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
+            float obstacle_cost;
+            if(detect_line_flag) obstacle_cost = 0.0;
+            else obstacle_cost = calc_obstacle_cost(traj, obs_list);
+            float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost;
             if(min_cost >= final_cost){
-                min_goal_cost = each_gain[0]*normalization_to_goal_cost;
-                min_edge_cost = each_gain[1]*normalization_to_edge_cost;
-                min_obs_cost = each_gain[3]*normalization_obstacle_cost;
-                min_speed_cost = each_gain[2]*normalization_speed_cost;
+                min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
+                min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
+                min_speed_cost = SPEED_COST_GAIN*speed_cost;
                 min_cost = final_cost;
-                best_traj = cost.traj;
-            }
-            // if(min_cost >= final_cost){
-            //     min_goal_cost = each_gain[0]*cost.to_goal_cost;
-            //     min_edge_cost = each_gain[1]*cost.to_edge_cost;
-            //     min_obs_cost = each_gain[3]*cost.obstacle_cost;
-            //     min_speed_cost = each_gain[2]*cost.speed_cost;
-            //     min_cost = final_cost;
-            //     best_traj = cost.traj;
-            // }
-
-        }
-    }
-
-    else //USE_ACTIVE_GAIN false
-    {
-
-        // float weight_edge_cost = calc_obs_to_edge(obs_list, goal);
-        // dwa_planner::Edge_Gain edge_gain;
-        // edge_gain.to_edge_gain = weight_edge_cost;
-        // edge_gain_pub.publish(edge_gain);
-
-        // ROS_INFO_STREAM("weight_edge_cost");
-        // ROS_INFO_STREAM(weight_edge_cost);
-
-        for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-            for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
-                State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
-                std::vector<State> traj;
-                for(float t=0; t<=PREDICT_TIME; t+=DT){
-                    motion(state, v, y);
-                    traj.push_back(state);
-                }
-                trajectories.push_back(traj);
-
-                float to_goal_cost = calc_to_goal_cost(traj, goal);
-                float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
-                float obstacle_cost = calc_obstacle_cost(traj, obs_list);
-                // float to_edge_cost = calc_to_edge_cost(traj, goal);
-                // float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost + TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
-                float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost;
-                if(min_cost >= final_cost){
-                    min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                    // min_edge_cost = TO_EDGE_COST_GAIN*weight_edge_cost*to_edge_cost;
-                    min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
-                    min_speed_cost = SPEED_COST_GAIN*speed_cost;
-                    min_cost = final_cost;
-                    best_traj = traj;
-                }
+                best_traj = traj;
             }
         }
     }
 
     ROS_INFO_STREAM("Cost: " << min_cost);
     ROS_INFO_STREAM("- Goal cost: " << min_goal_cost);
-    // ROS_INFO_STREAM("- Edge cost: " << min_edge_cost);
     ROS_INFO_STREAM("- Obs cost: " << min_obs_cost);
     ROS_INFO_STREAM("- Speed cost: " << min_speed_cost);
     ROS_INFO_STREAM("num of trajectories: " << trajectories.size());
@@ -409,14 +272,8 @@ void DWAPlanner::process(void)
 {
     ros::Rate loop_rate(HZ);
 
-    assert((SPEED_GAIN_RATE + GOAL_GAIN_RATE + EDGE_GAIN_RATE) == double(1.0));
     while(ros::ok()){
         ROS_INFO("==========================================");
-        if(USE_ACTIVE_GAIN)
-        {
-            f = boost::bind(&DWAPlanner::gain_slope_callback, this, _1);
-            server.setCallback(f);
-        }
 
         double start = ros::Time::now().toSec();
         bool input_updated = false;
@@ -726,83 +583,6 @@ void DWAPlanner::push_back_to_frame_array(const std::vector<Frame>& robot_frame)
         marker.colors.push_back(color);
     }
     robot_frames_marker.markers.push_back(marker);
-}
-
-float DWAPlanner::calc_obs_to_edge(const std::vector<std::vector<float>>& obs_list, const Eigen::Vector3d& goal)
-{
-    float min_dist = 1e2;
-
-    double a = std::tan(goal(2));
-    double b = goal(1) - a*goal(0);
-
-    for(auto& obs : obs_list)
-    {
-        double obs_edge_dist = std::sqrt(std::pow(obs[0],2.0) + std::pow(obs[1],2.0));
-        if(obs_edge_dist < THRESHOLD_OBS_EDGE_DIST && obs[0] > 0.0)
-        {
-            double dist = std::fabs(a*obs[0] - obs[1] + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-            if(dist < min_dist) min_dist = dist;
-
-        }
-    }
-
-
-    double robot_edge_dist = std::fabs(a*0.0 - 0.0 + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-    ROS_INFO_STREAM("robot_edge_dist");
-    ROS_INFO_STREAM(min_dist);
-
-    if(min_dist == 1e2)
-    {
-        if(robot_edge_dist*0.5 > 1.0) return 1.0;
-        else return robot_edge_dist*0.5;
-    }
-    else
-    {
-        if(min_dist*robot_edge_dist*0.5 > 1.0) return 1.0;
-        else return min_dist*robot_edge_dist*0.5;
-    }
-}
-
-float DWAPlanner::calc_to_edge_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal)
-{
-    double a = std::tan(goal(2));
-    double b = goal(1) - a*goal(0);
-    double pile_d = 0.0;
-    int i = 1;
-
-    for(const auto& state : traj)
-    {
-        double d = std::fabs(a*state.x - state.y + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-        pile_d += d;
-        i++;
-    }
-    // Eigen::Vector3d last_position(traj.back().x, traj.back().y, traj.back().yaw);
-    // double d = std::fabs(a*last_position(0) - last_position(1) + b) / std::sqrt(std::pow(a,2.0) + std::pow(-1,2.0));
-    return pile_d/i;
-}
-
-std::vector<float> DWAPlanner::calc_each_gain(const float pile_weight_obstacle_cost)
-{
-    std::vector<float> each_gain;
-    float gain = GAIN_SLOPE * pile_weight_obstacle_cost + GAIN_INTERCEPT;
-    if(gain >= 1.0) gain = 1.0;
-    float to_goal_gain = GOAL_GAIN_RATE * gain;
-    float to_edge_gain = EDGE_GAIN_RATE * gain;
-    float speed_gain = SPEED_GAIN_RATE * gain;
-    float obstacle_gain = 1.0 - gain;
-    each_gain.push_back(to_goal_gain);
-    each_gain.push_back(to_edge_gain);
-    each_gain.push_back(speed_gain);
-    each_gain.push_back(obstacle_gain);
-
-    dwa_planner::Gain _gain;
-    _gain.to_goal_gain = to_goal_gain;
-    _gain.to_edge_gain = to_edge_gain;
-    _gain.speed_gain = speed_gain;
-    _gain.obstacle_gain = obstacle_gain;
-    gain_pub.publish(_gain);
-
-    return each_gain;
 }
 
 void DWAPlanner::motion(State& state, const double velocity, const double yawrate)

@@ -21,4 +21,6 @@
         <remap from="/current_checkpoint" to="/current_checkpoint"/>
         <remap from="/detect_line" to="/detect_line"/>
     </node>
+
+    <include file="$(find stop_behind_robot)/launch/stop_behind_robot.launch" />
 </launch>
