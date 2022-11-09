@@ -16,9 +16,6 @@
   <depend>visualization_msgs</depend>
   <depend>tf</depend>
   <depend>eigen</depend>
-  <depend>std_msgs</depend>
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
 
   <export>
   </export>

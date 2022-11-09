@@ -52,12 +52,11 @@ find_package(Eigen3 REQUIRED COMPONENTS system)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Gain.msg
-  # Message1.msg
-  # Message2.msg
-)
+# add_message_files(
+#   FILES
+#   # Message1.msg
+#   # Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -95,11 +94,11 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-generate_dynamic_reconfigure_options(
-  cfg/GainSlope.cfg
+# generate_dynamic_reconfigure_options(
+#   cfg/GainSlope.cfg
   # cfg/DynReconf1.cfg
   # cfg/DynReconf2.cfg
-)
+# )
 
 ###################################
 ## catkin specific configuration ##
@@ -113,7 +112,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES dwa_planner_lib
-    CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf message_runtime
+    # CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf message_runtime
 #  DEPENDS system_lib
 )
 

@@ -1,4 +1,0 @@
-float64 to_goal_gain
-float64 to_edge_gain
-float64 speed_gain
-float64 obstacle_gain

@@ -19,10 +19,8 @@
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
         <remap from="/odom" to="/whill/odom"/>
         <remap from="/current_checkpoint" to="/current_checkpoint"/>
-<<<<<<< HEAD
-        <remap from="/current_pose" to="/amcl_pose"/>
-=======
         <remap from="/detect_line" to="/detect_line"/>
->>>>>>> origin/feature_detect_line
     </node>
+
+    <include file="$(find stop_behind_robot)/launch/stop_behind_robot.launch" />
 </launch>
