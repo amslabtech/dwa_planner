@@ -93,7 +93,7 @@ public:
     float calc_distance_from_frame(const Frame& frame, const std::vector<float>& obs);
     void push_back_to_frame_array(const std::vector<Frame>& robot_frame);
     void push_back_to_nearest_obs_marker(const std::vector<float>& obs);
-    bool is_inside(const State& state, const Frame& frame, const std::vector<float>& obs);
+    bool is_inside(const std::vector<float>& center, const Frame& frame, const std::vector<float>& obs);
 
 protected:
     double HZ;
@@ -120,6 +120,7 @@ protected:
     double THRESHOLD_OBS_EDGE_DIST;
     bool detect_line_flag = false;
     std::vector<Frame> ROBOT_FRAMES;
+    std::vector<float> ROBOT_CENTER;
     visualization_msgs::MarkerArray robot_frames_marker;
     visualization_msgs::Marker nearest_obs_marker;
     int OBS_SEARCH_REDUCTION_RATE;

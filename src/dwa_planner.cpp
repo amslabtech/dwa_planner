@@ -119,6 +119,9 @@ void DWAPlanner::set_robot_frames(const double front, const double rear, const d
     ROBOT_FRAMES.push_back(frame);
     frame = Frame(rear, left, rear, right);
     ROBOT_FRAMES.push_back(frame);
+    ROBOT_CENTER.clear();
+    ROBOT_CENTER.push_back(0.5*(front+rear));
+    ROBOT_CENTER.push_back(0.5*(left+right));
 }
 
 DWAPlanner::Frame::Frame(const float x1, const float y1, const float x2, const float y2)
@@ -455,9 +458,10 @@ float DWAPlanner::calc_distance_from_frame(const Frame& frame, const std::vector
     else return sqrt((dx21*dy10 - dy21*dx10) * (dx21*dy10 - dy21*dx10) / (dx21*dx21 + dy21*dy21));
 }
 
-bool DWAPlanner::is_inside(const State& state, const Frame& frame, const std::vector<float>& obs)
+bool DWAPlanner::is_inside(const std::vector<float>& center, const Frame& frame, const std::vector<float>& obs)
 {
-    std::vector<std::vector<float>> polygon = {{state.x, state.y},
+    // std::vector<std::vector<float>> polygon = {{state.x, state.y},
+    std::vector<std::vector<float>> polygon = { center,
                                                frame.p1,
                                                frame.p2,
                                               };
@@ -485,7 +489,8 @@ float DWAPlanner::calc_distance_from_robot(const State& state, const std::vector
 {
     int direction = judge_nearest_frame(state, obs);
     Frame nearest_frame = transform_nearest_frame(state, ROBOT_FRAMES[direction]);
-    if(is_inside(state, nearest_frame, obs)) return 0.0;
+    std::vector<float> transformed_center = {ROBOT_CENTER[0]+state.x, ROBOT_CENTER[1]+state.y};
+    if(is_inside(transformed_center, nearest_frame, obs)) return 0.0;
     else return calc_distance_from_frame(nearest_frame, obs);
     // float dist_from_base = std::hypot(obs[0]-state.x, obs[1]-state.y);
 }

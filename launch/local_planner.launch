@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="hz" default="20"/>
+    <arg name="hz" default="10"/>
     <arg name="use_scan_as_input" default="false"/>
     <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
     <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
@@ -11,18 +11,15 @@
         <rosparam command="load" file="$(arg dwa_param)"/>
         <param name="HZ" value="$(arg hz)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
-        <param name="VISUALIZE_NEAREST_OBS" value="false"/>
-        <param name="OBS_SEARCH_REDUCTION_RATE" value="5"/>
-        <remap from="/local_map" to="/local_map/expand"/>
+        <param name="VISUALIZE_NEAREST_OBS" value="true"/>
+        <param name="OBS_SEARCH_REDUCTION_RATE" value="10"/>
+        <remap from="/local_map" to="/localmap/projected_roadedge"/>
         <remap from="/scan" to="/front_laser/scan"/>
         <remap from="/local_goal" to="/local_goal"/>
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
         <remap from="/odom" to="/whill/odom"/>
         <remap from="/current_checkpoint" to="/current_checkpoint"/>
-<<<<<<< HEAD
         <remap from="/current_pose" to="/amcl_pose"/>
-=======
         <remap from="/detect_line" to="/detect_line"/>
->>>>>>> origin/feature_detect_line
     </node>
 </launch>
