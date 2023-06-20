@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/noetic/include/**",
+        "/home/amsl/catkin_ws/src/navigation/base_local_planner/include/**",
+        "/home/amsl/catkin_ws/src/navigation/costmap_2d/include/**",
+        "/home/amsl/catkin_ws/src/navigation/dwa_local_planner/include/**",
+        "/home/amsl/catkin_ws/src/dwa_planner/include/**",
+        "/home/amsl/catkin_ws/src/navigation/map_server/include/**",
+        "/home/amsl/catkin_ws/src/navigation/nav_core/include/**",
+        "/home/amsl/catkin_ws/src/navigation/voxel_grid/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

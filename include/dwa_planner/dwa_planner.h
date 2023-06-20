@@ -1,3 +1,8 @@
+/**
+* @file dwa_plannr.h
+* @brief C++ implementation for dwa planner
+* @author AMSL
+*/
 #ifndef __DWA_PLANNER_H
 #define __DWA_PLANNER_H
 
@@ -15,14 +20,28 @@
 
 #include <Eigen/Dense>
 
+/**
+ * @brief Class for dwa planning
+*/
 class DWAPlanner
 {
 public:
+    /**
+     * @brief Constructor
+    */
     DWAPlanner(void);
 
     class State
     {
     public:
+        /**
+         * @brief Constractor
+         * @param[in] _x Number of robot position x
+         * @param[in] _y Number of robot position y
+         * @param[in] _yaw Number of robot orientation yaw
+         * @param[in] _velocity Numbre of robot linear velocity
+         * @param[in] _yawrate Number of robot angular velocity
+        */
         State(double, double, double, double, double);
 
         double x;// robot position x
@@ -33,18 +52,37 @@ public:
     private:
     };
 
+    /**
+     * @brief Class for calculating dynamic window
+    */
     class Window
     {
     public:
+        /**
+         * @brief Constructor
+        */
         Window(void);
+        /**
+         * @brief Constructor
+         * @param[in] _min_velocity Number of minimum velocity
+         * @param[in] _max_velocity Number of maximum velocity
+         * @param[in] _min_yawrate Number of minimum angular velocity
+         * @param[in] _max_yawrate Number of maximam angular velocity
+        */
         Window(const double, const double, const double, const double);
-        double min_velocity;
-        double max_velocity;
-        double min_yawrate;
-        double max_yawrate;
+
+        double min_velocity;// minimum velocity
+        double max_velocity;// maximum velocity
+        double min_yawrate;// minimun angular velocity
+        double max_yawrate;// maximum angular velocity
     private:
     };
+
+    /**
+     * @brief calculating local path plan
+    */
     void process(void);
+    
     void local_goal_callback(const geometry_msgs::PoseStampedConstPtr&);
     void scan_callback(const sensor_msgs::LaserScanConstPtr&);
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
