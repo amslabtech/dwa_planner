@@ -31,6 +31,9 @@ public:
     */
     DWAPlanner(void);
 
+    /**
+     * @brief Class for set pose
+    */
     class State
     {
     public:
@@ -82,21 +85,92 @@ public:
      * @brief calculating local path plan
     */
     void process(void);
-    
+    /**
+     * @brief set local goal
+    */
     void local_goal_callback(const geometry_msgs::PoseStampedConstPtr&);
+    /**
+     * @brief set scan information
+    */
     void scan_callback(const sensor_msgs::LaserScanConstPtr&);
+    /**
+     * @brief set lacal map
+    */
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
+    /**
+     * @brief set odometry information
+    */
     void odom_callback(const nav_msgs::OdometryConstPtr&);
+    /**
+     * @brief set target velocity information
+    */
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
+    /**
+     * @brief calculating dynamic window
+     * @return class dynamic window
+    */
     Window calc_dynamic_window(const geometry_msgs::Twist&);
+    /**
+     * @brief calclating the distance of current pose to goal pose
+     * @param[in] traj estimated trajectory
+     * @param[in] goal pose of goal
+     * @return float distance of current pose to goal pose
+    */
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
+    /**
+     * @brief calculating difference of target velocity from estimated velocity
+     * @return float difference of velocity
+    */
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
+    /**
+     * @brief calculating distance from obstacle
+     * @param[in] traj estimated trajectory
+     * @param[in] obs_list gird map informations which there is obstacle or not
+     * @return float inverde of distance from obstacle
+    */
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
+    /**
+     * @berif calculating pose 
+     * @param[in] velocity velocity
+     * @param[in] yawrate angular velocity
+     * @param[out] state constractor setting pose information
+    */
     void motion(State& state, const double velocity, const double yawrate);
+    /**
+     * @brief changing map coordinates to robot coordinates
+     * @return vector position of obstacle
+    */
     std::vector<std::vector<float>> raycast();
+    /**
+     * @brief caluculating position of obstacle
+     * @return vector position of obstacle
+    */
     std::vector<std::vector<float>> scan_to_obs();
+    /**
+     * @brief publishing candidate trajectories
+     * @param[in] trajectories candidated trajectory
+     * @param[in] r number of red in rgb color chart
+     * @param[in] g number of green in rgb color chart
+     * @param[in] b number of blue in rgb color chart
+     * @param[in] trajectories_size number of size about 
+     * @param[out] pub publisher of candidate trajectories
+    */
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
+    /**
+     * @brief publishing candidate trajectory
+     * @param[in] trajectory selected trajectry
+     * @param[in] r number of red in rgb color chart
+     * @param[in] g number of green in rgb color chart
+     * @param[in] b number of blue in rgb color chart
+     * @param[out] pub publisher of candidate trajectory
+    */
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
+    /**
+     * @brief executing dwa planner
+     * @param[in] window class of dynamic window
+     * @param[in] goal vector3d of goal pose
+     * @param[in] obs_list vector of obstacle's position  
+    */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
 protected:
