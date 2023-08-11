@@ -23,6 +23,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("THRESHOLD_OBS_EDGE_DIST", THRESHOLD_OBS_EDGE_DIST, {2.0});
+    local_nh.param("MAX_ANGLE_TO_GOAL", MAX_ANGLE_TO_GOAL, {1.5});
+    local_nh.param("MIN_ANGLE_TO_GOAL", MIN_ANGLE_TO_GOAL, {-1.5});
 
     double FRONT_FRAME_DISTANCE, REAR_FRAME_DISTANCE, LEFT_FRAME_DISTANCE, RIGHT_FRAME_DISTANCE;
     local_nh.param("FRONT_FRAME_DISTANCE", FRONT_FRAME_DISTANCE, {0.5});
@@ -78,6 +80,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("LEFT_FRAME_DISTANCE: " << LEFT_FRAME_DISTANCE);
     ROS_INFO_STREAM("RIGHT_FRAME_DISTANCE: " << RIGHT_FRAME_DISTANCE);
     ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
+    ROS_INFO_STREAM("MAX_ANGLE_TO_GOAL: " << MAX_ANGLE_TO_GOAL);
+    ROS_INFO_STREAM("MIN_ANGLE_TO_GOAL: " << MIN_ANGLE_TO_GOAL);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -267,7 +271,7 @@ void DWAPlanner::process(void)
             ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
 
             geometry_msgs::Twist cmd_vel;
-            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
+            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD and (MIN_ANGLE_TO_GOAL < goal[2] and goal[2] < MAX_ANGLE_TO_GOAL)){
                 std::vector<std::vector<float>> obs_list;
                 if(USE_SCAN_AS_INPUT){
                     obs_list = scan_to_obs();

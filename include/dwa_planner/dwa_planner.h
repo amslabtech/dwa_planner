@@ -118,6 +118,8 @@ protected:
     double GOAL_THRESHOLD;
     double TURN_DIRECTION_THRESHOLD;
     double THRESHOLD_OBS_EDGE_DIST;
+    double MAX_ANGLE_TO_GOAL;
+    double MIN_ANGLE_TO_GOAL;
     bool detect_line_flag = false;
     std::vector<Frame> ROBOT_FRAMES;
     std::vector<float> ROBOT_CENTER;
