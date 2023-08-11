@@ -1,4 +1,5 @@
 #include "dwa_planner/dwa_planner.h"
+#include <cmath>
 
 DWAPlanner::DWAPlanner(void)
     :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false)
@@ -271,7 +272,8 @@ void DWAPlanner::process(void)
             ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
 
             geometry_msgs::Twist cmd_vel;
-            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD and (MIN_ANGLE_TO_GOAL < goal[2] and goal[2] < MAX_ANGLE_TO_GOAL)){
+            double angle_to_goal = atan2(goal[1], goal[0]);
+            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD and (MIN_ANGLE_TO_GOAL < angle_to_goal and angle_to_goal < MAX_ANGLE_TO_GOAL)){
                 std::vector<std::vector<float>> obs_list;
                 if(USE_SCAN_AS_INPUT){
                     obs_list = scan_to_obs();
