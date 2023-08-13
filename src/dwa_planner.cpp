@@ -24,8 +24,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("THRESHOLD_OBS_EDGE_DIST", THRESHOLD_OBS_EDGE_DIST, {2.0});
-    local_nh.param("MAX_ANGLE_TO_GOAL", MAX_ANGLE_TO_GOAL, {1.5});
-    local_nh.param("MIN_ANGLE_TO_GOAL", MIN_ANGLE_TO_GOAL, {-1.5});
+    local_nh.param("MAX_ANGLE_TO_GOAL", MAX_ANGLE_TO_GOAL, {1.0});
+    local_nh.param("MIN_ANGLE_TO_GOAL", MIN_ANGLE_TO_GOAL, {-1.0});
 
     double FRONT_FRAME_DISTANCE, REAR_FRAME_DISTANCE, LEFT_FRAME_DISTANCE, RIGHT_FRAME_DISTANCE;
     local_nh.param("FRONT_FRAME_DISTANCE", FRONT_FRAME_DISTANCE, {0.5});
