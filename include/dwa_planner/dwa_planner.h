@@ -5,6 +5,7 @@
 #include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -61,6 +62,17 @@ public:
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
+
+    void robot_footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
+    void nav_goal_callback(const geometry_msgs::PoseStampedConstPtr& msg);
+    float calc_dist_from_robot(const std::vector<float>& obstacle, const State& state);
+    geometry_msgs::PolygonStamped move_footprint(const State& target_pose);
+    int detect_nearest_side(const std::vector<float>& obstacle, State state);
+    bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& robot_footprint, const State& state);
+    bool is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle);
+    geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped robot_footprint);
+
+
 protected:
     double HZ;
     std::string ROBOT_FRAME;
@@ -104,6 +116,11 @@ protected:
     bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
+
+    geometry_msgs::PolygonStamped robot_footprint;
+    bool robot_footprint_subscribed;
+    ros::Subscriber base_robot_footprint_sub;
+    ros::Subscriber nav_goal_sub;
 };
 
 #endif //__DWA_PLANNER_H

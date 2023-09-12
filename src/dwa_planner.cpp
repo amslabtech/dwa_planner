@@ -1,7 +1,11 @@
 #include "dwa_planner/dwa_planner.h"
+#include "geometry_msgs/PolygonStamped.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "ros/serialization.h"
+#include <boost/thread/detail/move.hpp>
 
 DWAPlanner::DWAPlanner(void)
-    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false)
+    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), robot_footprint_subscribed(false)
 {
     local_nh.param("HZ", HZ, {20});
     local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
@@ -57,6 +61,8 @@ DWAPlanner::DWAPlanner(void)
     }
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
+    base_robot_footprint_sub = nh.subscribe("/robot_footprint", 1, &DWAPlanner::robot_footprint_callback, this);
+    nav_goal_sub = nh.subscribe("/move_base_simple/goal", 1, &DWAPlanner::nav_goal_callback, this);
 }
 
 DWAPlanner::State::State(double _x, double _y, double _yaw, double _velocity, double _yawrate)
@@ -109,8 +115,25 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
     ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
 }
 
+void DWAPlanner::robot_footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
+{
+    robot_footprint = *msg;
+    robot_footprint_subscribed = true;
+}
+
+void DWAPlanner::nav_goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
+{
+    State state(0.0, 0.0, 0.0, 0.0, 0.0);
+    geometry_msgs::PolygonStamped footprint = move_footprint(state);
+    geometry_msgs::PoseStamped pose = *msg;
+    std::vector<float> obs;
+    obs.push_back(pose.pose.position.x);
+    obs.push_back(pose.pose.position.y);
+    ROS_INFO_STREAM("side_index: " << detect_nearest_side(obs, state));
+}
+
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
-        Window dynamic_window, 
+        Window dynamic_window,
         Eigen::Vector3d goal,
         std::vector<std::vector<float>> obs_list)
 {
@@ -162,9 +185,11 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
 
 void DWAPlanner::process(void)
 {
+    ROS_INFO_STREAM(__LINE__);
     ros::Rate loop_rate(HZ);
 
     while(ros::ok()){
+        ROS_INFO_STREAM(__LINE__);
         ROS_INFO("==========================================");
         double start = ros::Time::now().toSec();
         bool input_updated = false;
@@ -173,7 +198,7 @@ void DWAPlanner::process(void)
         }else if(!USE_SCAN_AS_INPUT && local_map_updated){
             input_updated = true;
         }
-        if(input_updated && local_goal_subscribed && odom_updated){
+        if(input_updated && local_goal_subscribed && odom_updated && robot_footprint_subscribed){
             Window dynamic_window = calc_dynamic_window(current_velocity);
             Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
             ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
@@ -220,6 +245,11 @@ void DWAPlanner::process(void)
             if(USE_SCAN_AS_INPUT && !scan_updated){
                 ROS_WARN_THROTTLE(1.0, "Scan has not been updated");
             }
+            if(!robot_footprint_subscribed){
+                ROS_WARN_THROTTLE(1.0, "Robot Footprint has not been updated");
+            }
+            geometry_msgs::Twist cmd_vel;
+            velocity_pub.publish(cmd_vel);
         }
         ros::spinOnce();
         loop_rate.sleep();
@@ -255,7 +285,7 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     float min_dist = 1e3;
     for(const auto& state : traj){
         for(const auto& obs : obs_list){
-            float dist = sqrt((state.x - obs[0])*(state.x - obs[0]) + (state.y - obs[1])*(state.y - obs[1]));
+            float dist = calc_dist_from_robot(obs, state);
             if(dist <= local_map.info.resolution){
                 cost = 1e6;
                 return cost;
@@ -265,6 +295,148 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     }
     cost = 1.0 / min_dist;
     return cost;
+}
+
+geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped robot_footprint)
+{
+    ROS_INFO_STREAM(__LINE__);
+    const int side_index = detect_nearest_side(obstacle, state);
+    const Eigen::Vector3d vector_A(obstacle[0], obstacle[1], 0.0);
+    const Eigen::Vector3d vector_B(state.x, state.y, 0.0);
+    const Eigen::Vector3d vector_C(robot_footprint.polygon.points[side_index].x, robot_footprint.polygon.points[side_index].y, 0.0);
+    Eigen::Vector3d vector_D(0.0, 0.0, 0.0);
+    if(side_index != robot_footprint.polygon.points.size()-1)
+        vector_D << robot_footprint.polygon.points[side_index+1].x, robot_footprint.polygon.points[side_index+1].y, 0.0;
+    else
+        vector_D << robot_footprint.polygon.points[0].x, robot_footprint.polygon.points[0].y, 0.0;
+
+    const double deno = (vector_B-vector_A).cross(vector_D-vector_C).z();
+    const double s    = (vector_C-vector_A).cross(vector_D-vector_C).z()/deno;
+    const double t    = (vector_B-vector_A).cross(vector_A-vector_C).z()/deno;
+
+    geometry_msgs::Point point;
+    point.x = vector_A.x() + s*(vector_B-vector_A).x();
+    point.y = vector_A.y() + s*(vector_B-vector_A).y();
+
+    return point;
+}
+
+float DWAPlanner::calc_dist_from_robot(const std::vector<float>& obstacle, const State& state)
+{
+    ROS_INFO_STREAM(__LINE__);
+    const geometry_msgs::PolygonStamped moved_robot_footprint = move_footprint(state);
+    ROS_INFO_STREAM(__LINE__);
+    if(is_inside_of_robot(obstacle, moved_robot_footprint, state)){
+        ROS_INFO_STREAM(__LINE__);
+        return 0.0;
+    }else{
+        ROS_INFO_STREAM(__LINE__);
+        geometry_msgs::Point intersection = calc_intersection(obstacle, state, moved_robot_footprint);
+        return hypot((obstacle[0]-intersection.x),(obstacle[1]-intersection.y));
+    }
+    ROS_INFO_STREAM(__LINE__);
+}
+
+geometry_msgs::PolygonStamped DWAPlanner::move_footprint(const State& target_pose)
+{
+    geometry_msgs::PolygonStamped moved_robot_footprint = robot_footprint;
+    moved_robot_footprint.header.stamp = ros::Time::now();
+    for(auto& point : moved_robot_footprint.polygon.points)
+    {
+        Eigen::VectorXf point_in(2);
+        point_in << point.x, point.y;
+        Eigen::Matrix2f rot;
+        rot = Eigen::Rotation2Df(target_pose.yaw);
+        const Eigen::VectorXf point_out = rot * point_in;
+
+        point.x = point_out.x() + target_pose.x;
+        point.y = point_out.y() + target_pose.y;
+    }
+    return moved_robot_footprint;
+}
+
+int DWAPlanner::detect_nearest_side(const std::vector<float>& obstacle, State state)
+{
+    ROS_INFO_STREAM(__LINE__);
+
+    state.x = 0.0;
+    state.y = 0.0;
+    const geometry_msgs::PolygonStamped robot_footprint = move_footprint(state);
+    ROS_INFO_STREAM(__LINE__);
+    ROS_INFO_STREAM("robot_footprint size: " << robot_footprint.polygon.points.size());
+    for(int i=0; i<robot_footprint.polygon.points.size(); i++){
+        ROS_INFO_STREAM(i);
+        ROS_INFO_STREAM(__LINE__);
+        float angle_target = atan2(obstacle[1], obstacle[0]);
+        float angle1 = atan2(robot_footprint.polygon.points[i].y, robot_footprint.polygon.points[i].x);
+        float angle2;
+        if(i != robot_footprint.polygon.points.size()-1)
+            angle2 = atan2(robot_footprint.polygon.points[i+1].y, robot_footprint.polygon.points[i+1].x);
+        else
+            angle2 = atan2(robot_footprint.polygon.points[0].y, robot_footprint.polygon.points[0].x);
+
+        ROS_INFO_STREAM(__LINE__);
+        if(angle1 <= angle_target and angle_target < angle2)
+            return i;
+        ROS_INFO_STREAM(__LINE__);
+    }
+}
+
+bool DWAPlanner::is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& robot_footprint, const State& state)
+{
+    ROS_INFO_STREAM(__LINE__);
+    const int side_index = detect_nearest_side(obstacle, state);
+    geometry_msgs::Point32 state_point;
+    state_point.x = state.x;
+    state_point.y = state.y;
+
+    ROS_INFO_STREAM(__LINE__);
+    geometry_msgs::Polygon triangle;
+    triangle.points.push_back(state_point);
+    triangle.points.push_back(robot_footprint.polygon.points[side_index]);
+
+    ROS_INFO_STREAM(__LINE__);
+    if(side_index != robot_footprint.polygon.points.size()-1)
+        triangle.points.push_back(robot_footprint.polygon.points[side_index+1]);
+    else
+        triangle.points.push_back(robot_footprint.polygon.points[0]);
+
+    ROS_INFO_STREAM(__LINE__);
+    if(is_inside_of_triangle(obstacle, triangle))
+        return true;
+    else
+        return false;
+}
+
+bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle)
+{
+    if(triangle.points.size() != 3)
+    {
+        ROS_ERROR("Not triangle");
+        exit(1);
+    }
+
+    const Eigen::Vector3d vector_A(triangle.points[0].x, triangle.points[0].y, 0.0);
+    const Eigen::Vector3d vector_B(triangle.points[1].x, triangle.points[1].y, 0.0);
+    const Eigen::Vector3d vector_C(triangle.points[2].x, triangle.points[2].y, 0.0);
+    const Eigen::Vector3d vector_P(target_point[0], target_point[1], 0.0);
+
+    const Eigen::Vector3d vector_AB = vector_B - vector_A;
+    const Eigen::Vector3d vector_BP = vector_P - vector_B;
+    const Eigen::Vector3d cross1 = vector_AB.cross(vector_BP);
+
+    const Eigen::Vector3d vector_BC = vector_C - vector_B;
+    const Eigen::Vector3d vector_CP = vector_P - vector_C;
+    const Eigen::Vector3d cross2 = vector_BC.cross(vector_CP);
+
+    const Eigen::Vector3d vector_CA = vector_A - vector_C;
+    const Eigen::Vector3d vector_AP = vector_P - vector_A;
+    const Eigen::Vector3d cross3 = vector_CA.cross(vector_AP);
+
+    if((0<cross1.z() and 0<cross2.z() and 0<cross3.z()) or (cross1.z()<0 and cross2.z()<0 and cross3.z()<0))
+        return true;
+    else
+        return false;
 }
 
 void DWAPlanner::motion(State& state, const double velocity, const double yawrate)
