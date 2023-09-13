@@ -22,6 +22,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
+    local_nh.param("MAX_ANGLE_TO_GOAL", MAX_ANGLE_TO_GOAL, {1.0});
+    local_nh.param("MIN_ANGLE_TO_GOAL", MIN_ANGLE_TO_GOAL, {-1.0});
     DT = 1.0 / HZ;
 
     ROS_INFO("=== DWA Planner ===");
@@ -207,7 +209,9 @@ void DWAPlanner::process(void)
             ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
 
             geometry_msgs::Twist cmd_vel;
-            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
+            double angle_to_goal = atan2(goal[1], goal[0]);
+            // if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
+            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD and (MIN_ANGLE_TO_GOAL < angle_to_goal and angle_to_goal < MAX_ANGLE_TO_GOAL)){
                 std::vector<std::vector<float>> obs_list;
                 if(USE_SCAN_AS_INPUT){
                     obs_list = scan_to_obs();
