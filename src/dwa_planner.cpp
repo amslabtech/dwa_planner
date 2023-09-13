@@ -1,8 +1,4 @@
 #include "dwa_planner/dwa_planner.h"
-#include "geometry_msgs/PolygonStamped.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "ros/serialization.h"
-#include <boost/thread/detail/move.hpp>
 
 DWAPlanner::DWAPlanner(void)
     :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), robot_footprint_subscribed(false)
@@ -63,6 +59,7 @@ DWAPlanner::DWAPlanner(void)
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
     base_robot_footprint_sub = nh.subscribe("/robot_footprint", 1, &DWAPlanner::robot_footprint_callback, this);
     nav_goal_sub = nh.subscribe("/move_base_simple/goal", 1, &DWAPlanner::nav_goal_callback, this);
+    footprint_pub = nh.advertise<geometry_msgs::PolygonStamped>("moved_robot_footprint", 1);
 }
 
 DWAPlanner::State::State(double _x, double _y, double _yaw, double _velocity, double _yawrate)
@@ -117,7 +114,7 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& ms
 
 void DWAPlanner::robot_footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
 {
-    robot_footprint = *msg;
+    base_robot_footprint = *msg;
     robot_footprint_subscribed = true;
 }
 
@@ -125,11 +122,17 @@ void DWAPlanner::nav_goal_callback(const geometry_msgs::PoseStampedConstPtr &msg
 {
     State state(0.0, 0.0, 0.0, 0.0, 0.0);
     geometry_msgs::PolygonStamped footprint = move_footprint(state);
+    footprint_pub.publish(footprint);
     geometry_msgs::PoseStamped pose = *msg;
     std::vector<float> obs;
     obs.push_back(pose.pose.position.x);
     obs.push_back(pose.pose.position.y);
-    ROS_INFO_STREAM("side_index: " << detect_nearest_side(obs, state));
+    // ROS_WARN_STREAM("obs.x: " << obs[0] << " ,obs.y: " << obs[1]);
+    const geometry_msgs::Point cross_point = calc_intersection(obs, state, footprint);
+
+    // ROS_WARN_STREAM("cross point:");
+    // ROS_WARN_STREAM(cross_point);
+    // ROS_WARN_STREAM("is_inside_of_robot: " << is_inside_of_robot(obs, footprint, state));
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
@@ -299,49 +302,54 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
 
 geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped robot_footprint)
 {
-    ROS_INFO_STREAM(__LINE__);
-    const int side_index = detect_nearest_side(obstacle, state);
-    const Eigen::Vector3d vector_A(obstacle[0], obstacle[1], 0.0);
-    const Eigen::Vector3d vector_B(state.x, state.y, 0.0);
-    const Eigen::Vector3d vector_C(robot_footprint.polygon.points[side_index].x, robot_footprint.polygon.points[side_index].y, 0.0);
-    Eigen::Vector3d vector_D(0.0, 0.0, 0.0);
-    if(side_index != robot_footprint.polygon.points.size()-1)
-        vector_D << robot_footprint.polygon.points[side_index+1].x, robot_footprint.polygon.points[side_index+1].y, 0.0;
-    else
-        vector_D << robot_footprint.polygon.points[0].x, robot_footprint.polygon.points[0].y, 0.0;
+    // const int side_index = detect_nearest_side(obstacle, state);
+    for (int i=0; i<robot_footprint.polygon.points.size(); i++)
+    {
+        const Eigen::Vector3d vector_A(obstacle[0], obstacle[1], 0.0);
+        const Eigen::Vector3d vector_B(state.x, state.y, 0.0);
+        const Eigen::Vector3d vector_C(robot_footprint.polygon.points[i].x, robot_footprint.polygon.points[i].y, 0.0);
+        Eigen::Vector3d vector_D(0.0, 0.0, 0.0);
+        if(i != robot_footprint.polygon.points.size()-1)
+            vector_D << robot_footprint.polygon.points[i+1].x, robot_footprint.polygon.points[i+1].y, 0.0;
+        else
+            vector_D << robot_footprint.polygon.points[0].x, robot_footprint.polygon.points[0].y, 0.0;
 
-    const double deno = (vector_B-vector_A).cross(vector_D-vector_C).z();
-    const double s    = (vector_C-vector_A).cross(vector_D-vector_C).z()/deno;
-    const double t    = (vector_B-vector_A).cross(vector_A-vector_C).z()/deno;
+        const double deno = (vector_B-vector_A).cross(vector_D-vector_C).z();
+        const double s    = (vector_C-vector_A).cross(vector_D-vector_C).z()/deno;
+        const double t    = (vector_B-vector_A).cross(vector_A-vector_C).z()/deno;
+
+        geometry_msgs::Point point;
+        point.x = vector_A.x() + s*(vector_B-vector_A).x();
+        point.y = vector_A.y() + s*(vector_B-vector_A).y();
+
+        // cross
+        if(!(s < 0.0 || 1.0 < s || t < 0.0 || 1.0 < t))
+            return point;
+
+    }
 
     geometry_msgs::Point point;
-    point.x = vector_A.x() + s*(vector_B-vector_A).x();
-    point.y = vector_A.y() + s*(vector_B-vector_A).y();
-
+    point.x = 1e6;
+    point.y = 1e6;
     return point;
 }
 
 float DWAPlanner::calc_dist_from_robot(const std::vector<float>& obstacle, const State& state)
 {
-    ROS_INFO_STREAM(__LINE__);
-    const geometry_msgs::PolygonStamped moved_robot_footprint = move_footprint(state);
-    ROS_INFO_STREAM(__LINE__);
-    if(is_inside_of_robot(obstacle, moved_robot_footprint, state)){
-        ROS_INFO_STREAM(__LINE__);
+    const geometry_msgs::PolygonStamped robot_footprint = move_footprint(state);
+    if(is_inside_of_robot(obstacle, robot_footprint, state)){
         return 0.0;
     }else{
-        ROS_INFO_STREAM(__LINE__);
-        geometry_msgs::Point intersection = calc_intersection(obstacle, state, moved_robot_footprint);
+        geometry_msgs::Point intersection = calc_intersection(obstacle, state, robot_footprint);
         return hypot((obstacle[0]-intersection.x),(obstacle[1]-intersection.y));
     }
-    ROS_INFO_STREAM(__LINE__);
 }
 
 geometry_msgs::PolygonStamped DWAPlanner::move_footprint(const State& target_pose)
 {
-    geometry_msgs::PolygonStamped moved_robot_footprint = robot_footprint;
-    moved_robot_footprint.header.stamp = ros::Time::now();
-    for(auto& point : moved_robot_footprint.polygon.points)
+    geometry_msgs::PolygonStamped robot_footprint = base_robot_footprint;
+    robot_footprint.header.stamp = ros::Time::now();
+    for(auto& point : robot_footprint.polygon.points)
     {
         Eigen::VectorXf point_in(2);
         point_in << point.x, point.y;
@@ -352,60 +360,76 @@ geometry_msgs::PolygonStamped DWAPlanner::move_footprint(const State& target_pos
         point.x = point_out.x() + target_pose.x;
         point.y = point_out.y() + target_pose.y;
     }
-    return moved_robot_footprint;
+    return robot_footprint;
 }
 
-int DWAPlanner::detect_nearest_side(const std::vector<float>& obstacle, State state)
-{
-    ROS_INFO_STREAM(__LINE__);
-
-    state.x = 0.0;
-    state.y = 0.0;
-    const geometry_msgs::PolygonStamped robot_footprint = move_footprint(state);
-    ROS_INFO_STREAM(__LINE__);
-    ROS_INFO_STREAM("robot_footprint size: " << robot_footprint.polygon.points.size());
-    for(int i=0; i<robot_footprint.polygon.points.size(); i++){
-        ROS_INFO_STREAM(i);
-        ROS_INFO_STREAM(__LINE__);
-        float angle_target = atan2(obstacle[1], obstacle[0]);
-        float angle1 = atan2(robot_footprint.polygon.points[i].y, robot_footprint.polygon.points[i].x);
-        float angle2;
-        if(i != robot_footprint.polygon.points.size()-1)
-            angle2 = atan2(robot_footprint.polygon.points[i+1].y, robot_footprint.polygon.points[i+1].x);
-        else
-            angle2 = atan2(robot_footprint.polygon.points[0].y, robot_footprint.polygon.points[0].x);
-
-        ROS_INFO_STREAM(__LINE__);
-        if(angle1 <= angle_target and angle_target < angle2)
-            return i;
-        ROS_INFO_STREAM(__LINE__);
-    }
-}
+// int DWAPlanner::detect_nearest_side(std::vector<float> obstacle, State state)
+// {
+//     obstacle[0] -= state.x;
+//     obstacle[1] -= state.y;
+//     state.x = 0.0;
+//     state.y = 0.0;
+//
+//     const geometry_msgs::PolygonStamped robot_footprint = move_footprint(state);
+//
+//     for(int i=0; i<robot_footprint.polygon.points.size(); i++){
+//         ROS_WARN_STREAM("i: " << i);
+//         const float angle_target = atan2(obstacle[1], obstacle[0]);
+//         const float angle1 = atan2(robot_footprint.polygon.points[i].y, robot_footprint.polygon.points[i].x);
+//         float angle2;
+//         if(i != robot_footprint.polygon.points.size()-1)
+//             angle2 = atan2(robot_footprint.polygon.points[i+1].y, robot_footprint.polygon.points[i+1].x);
+//         else
+//             angle2 = atan2(robot_footprint.polygon.points[0].y, robot_footprint.polygon.points[0].x);
+//
+//         ROS_WARN_STREAM("angle1: " << angle1 << " ,angle_target: " << angle_target << ", angle2: " << angle2);
+//
+//         if((angle1 <= angle_target && angle_target < angle2) || (angle2 <= angle_target && angle_target < angle1))
+//                 return i;
+//     }
+// }
 
 bool DWAPlanner::is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& robot_footprint, const State& state)
 {
-    ROS_INFO_STREAM(__LINE__);
-    const int side_index = detect_nearest_side(obstacle, state);
+    // ROS_INFO_STREAM(__LINE__);
+    // const int side_index = detect_nearest_side(obstacle, state);
     geometry_msgs::Point32 state_point;
     state_point.x = state.x;
     state_point.y = state.y;
 
-    ROS_INFO_STREAM(__LINE__);
-    geometry_msgs::Polygon triangle;
-    triangle.points.push_back(state_point);
-    triangle.points.push_back(robot_footprint.polygon.points[side_index]);
+    for(int i=0; i<robot_footprint.polygon.points.size(); i++)
+    {
+        geometry_msgs::Polygon triangle;
+        triangle.points.push_back(state_point);
+        triangle.points.push_back(robot_footprint.polygon.points[i]);
 
-    ROS_INFO_STREAM(__LINE__);
-    if(side_index != robot_footprint.polygon.points.size()-1)
-        triangle.points.push_back(robot_footprint.polygon.points[side_index+1]);
-    else
-        triangle.points.push_back(robot_footprint.polygon.points[0]);
+        if(i != robot_footprint.polygon.points.size()-1)
+            triangle.points.push_back(robot_footprint.polygon.points[i+1]);
+        else
+            triangle.points.push_back(robot_footprint.polygon.points[0]);
 
-    ROS_INFO_STREAM(__LINE__);
-    if(is_inside_of_triangle(obstacle, triangle))
-        return true;
-    else
-        return false;
+        if(is_inside_of_triangle(obstacle, triangle))
+            return true;
+    }
+
+    return false;
+
+    // ROS_INFO_STREAM(__LINE__);
+    // geometry_msgs::Polygon triangle;
+    // triangle.points.push_back(state_point);
+    // triangle.points.push_back(robot_footprint.polygon.points[side_index]);
+    //
+    // ROS_INFO_STREAM(__LINE__);
+    // if(side_index != robot_footprint.polygon.points.size()-1)
+    //     triangle.points.push_back(robot_footprint.polygon.points[side_index+1]);
+    // else
+    //     triangle.points.push_back(robot_footprint.polygon.points[0]);
+    //
+    // ROS_INFO_STREAM(__LINE__);
+    // if(is_inside_of_triangle(obstacle, triangle))
+    //     return true;
+    // else
+    //     return false;
 }
 
 bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle)
@@ -433,7 +457,7 @@ bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, c
     const Eigen::Vector3d vector_AP = vector_P - vector_A;
     const Eigen::Vector3d cross3 = vector_CA.cross(vector_AP);
 
-    if((0<cross1.z() and 0<cross2.z() and 0<cross3.z()) or (cross1.z()<0 and cross2.z()<0 and cross3.z()<0))
+    if((0<cross1.z() && 0<cross2.z() && 0<cross3.z()) || (cross1.z()<0 && cross2.z()<0 && cross3.z()<0))
         return true;
     else
         return false;
@@ -469,8 +493,8 @@ std::vector<std::vector<float>> DWAPlanner::raycast()
         for(float dist = 0.0; dist <= MAX_DIST; dist += local_map.info.resolution){
             float x = dist * cos(angle);
             float y = dist * sin(angle);
-            int i = floor(x / local_map.info.resolution + 0.5) + local_map.info.width * 0.5;
-            int j = floor(y / local_map.info.resolution + 0.5) + local_map.info.height * 0.5;
+            const int i = int(floor((x - local_map.info.origin.position.x) / local_map.info.resolution));
+            const int j = int(floor((y - local_map.info.origin.position.y) / local_map.info.resolution));
             if( (i < 0 || i >= local_map.info.width) || (j < 0 || j >= local_map.info.height) ){
                 break;
             }

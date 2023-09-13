@@ -67,7 +67,7 @@ public:
     void nav_goal_callback(const geometry_msgs::PoseStampedConstPtr& msg);
     float calc_dist_from_robot(const std::vector<float>& obstacle, const State& state);
     geometry_msgs::PolygonStamped move_footprint(const State& target_pose);
-    int detect_nearest_side(const std::vector<float>& obstacle, State state);
+    int detect_nearest_side(std::vector<float> obstacle, State state);
     bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& robot_footprint, const State& state);
     bool is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle);
     geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped robot_footprint);
@@ -117,10 +117,11 @@ protected:
     bool local_map_updated;
     bool odom_updated;
 
-    geometry_msgs::PolygonStamped robot_footprint;
+    geometry_msgs::PolygonStamped base_robot_footprint;
     bool robot_footprint_subscribed;
     ros::Subscriber base_robot_footprint_sub;
     ros::Subscriber nav_goal_sub;
+    ros::Publisher footprint_pub;
 };
 
 #endif //__DWA_PLANNER_H
