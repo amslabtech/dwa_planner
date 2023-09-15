@@ -94,8 +94,8 @@ protected:
     bool USE_SCAN_AS_INPUT;
     double GOAL_THRESHOLD;
     double TURN_DIRECTION_THRESHOLD;
-    double MAX_ANGLE_TO_GOAL;
-    double MIN_ANGLE_TO_GOAL;
+    double ANGLE_TO_GOAL_TH;
+    int OBS_SEARCH_REDUCTION_RATE;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;

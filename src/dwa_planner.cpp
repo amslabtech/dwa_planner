@@ -22,8 +22,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
-    local_nh.param("MAX_ANGLE_TO_GOAL", MAX_ANGLE_TO_GOAL, {1.0});
-    local_nh.param("MIN_ANGLE_TO_GOAL", MIN_ANGLE_TO_GOAL, {-1.0});
+    local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {1.0});
+    local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
     DT = 1.0 / HZ;
 
     ROS_INFO("=== DWA Planner ===");
@@ -46,6 +46,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << OBSTACLE_COST_GAIN);
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << GOAL_THRESHOLD);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
+    ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << ANGLE_TO_GOAL_TH);
+    ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -211,7 +213,7 @@ void DWAPlanner::process(void)
             geometry_msgs::Twist cmd_vel;
             double angle_to_goal = atan2(goal[1], goal[0]);
             // if(goal.segment(0, 2).norm() > GOAL_THRESHOLD){
-            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD and (MIN_ANGLE_TO_GOAL < angle_to_goal and angle_to_goal < MAX_ANGLE_TO_GOAL)){
+            if(goal.segment(0, 2).norm() > GOAL_THRESHOLD and (fabs(angle_to_goal) < ANGLE_TO_GOAL_TH)){
                 std::vector<std::vector<float>> obs_list;
                 if(USE_SCAN_AS_INPUT){
                     obs_list = scan_to_obs();
@@ -290,7 +292,12 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
 {
     float cost = 0.0;
     float min_dist = 1e3;
+    int count = 0;
     for(const auto& state : traj){
+        if(count%OBS_SEARCH_REDUCTION_RATE != 0){
+            count++;
+            continue;
+        }
         for(const auto& obs : obs_list){
             float dist = calc_dist_from_robot(obs, state);
             if(dist <= local_map.info.resolution){
@@ -299,6 +306,7 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
             }
             min_dist = std::min(min_dist, dist);
         }
+        count++;
     }
     cost = 1.0 / min_dist;
     return cost;
