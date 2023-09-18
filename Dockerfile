@@ -1,4 +1,4 @@
-ARG ros_distro=melodic
+ARG ros_distro=noetic
 FROM ros:${ros_distro}-ros-base
 
 SHELL ["/bin/bash", "-c"]
