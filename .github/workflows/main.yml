@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ros_distro: [melodic, noetic]
+        ros_distro: [noetic]
     steps:
       - uses: actions/checkout@v2
 
