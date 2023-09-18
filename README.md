@@ -8,16 +8,16 @@
 ![demo_dwa](doc/demo_dwa.gif)
 
 ## Enviornment
-- Ubuntu 18.04 or 20.04
-- ROS Melodic, or Noetic
+- Ubuntu 20.04
+- ROS Noetic
 
 ## Install and Build
 
 ```
 cd catkin_workspace/src
 git clone https://github.com/amslabtech/dwa_planner.git
-cd ..
-catkin_make
+cd dwa_planner
+catkin build --this
 ```
 
 ## Node I/O
