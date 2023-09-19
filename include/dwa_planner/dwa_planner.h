@@ -1,3 +1,8 @@
+/**
+* @file dwa_plannr.h
+* @brief C++ implementation for dwa planner
+* @author AMSL
+*/
 #ifndef __DWA_PLANNER_H
 #define __DWA_PLANNER_H
 
@@ -15,50 +20,157 @@
 
 #include <Eigen/Dense>
 
+/**
+ * @brief Class for dwa planner
+*/
 class DWAPlanner
 {
 public:
+    /**
+     * @brief Constructor for the DWAPlanner
+    */
     DWAPlanner(void);
 
+    /**
+     * @brief Class for set pose
+    */
     class State
     {
     public:
+        /**
+         * @brief Constractor
+         * @param x The x position of robot
+         * @param y The y position of robot
+         * @param yaw The orientation of robot
+         * @param velocity The linear velocity of robot
+         * @param yawrate The angular velocity of robot
+        */
         State(double, double, double, double, double);
 
-        double x;// robot position x
-        double y;// robot posiiton y
-        double yaw;// robot orientation yaw
-        double velocity;// robot linear velocity
-        double yawrate;// robot angular velocity
+        double x;
+        double y;
+        double yaw;
+        double velocity;
+        double yawrate;
     private:
     };
 
+    /**
+     * @brief Class for calculating dynamic window
+    */
     class Window
     {
     public:
+        /**
+         * @brief Constructor
+        */
         Window(void);
+        /**
+         * @brief Constructor 
+         * @param min_velocity The minimum velocity of robot
+         * @param max_velocity The maximum velocity of robot
+         * @param min_yawrate The minimum angular velocity of robot
+         * @param max_yawrate The maximum angular velocity of robot
+        */
         Window(const double, const double, const double, const double);
+
         double min_velocity;
         double max_velocity;
         double min_yawrate;
         double max_yawrate;
     private:
     };
+
+    /**
+     * @brief Calculate local path plan
+    */
     void process(void);
+    /**
+     * @brief A callback to hanldle buffering locacl goal messages
+    */
     void local_goal_callback(const geometry_msgs::PoseStampedConstPtr&);
+    /**
+     * @brief A callback to hanldle buffering scan messages
+    */
     void scan_callback(const sensor_msgs::LaserScanConstPtr&);
+    /**
+     * @brief A callback to hanldle buffering local map messages
+    */
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
+    /**
+     * @brief A callback to hanldle buffering odometry messages
+    */
     void odom_callback(const nav_msgs::OdometryConstPtr&);
+    /**
+     * @brief A callback to hanldle buffering target velocity messages
+    */
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
+    /**
+     * @brief Calculate dynamic window
+     * @return The dynamic window
+    */
     Window calc_dynamic_window(const geometry_msgs::Twist&);
+    /**
+     * @brief Calculate the distance of current pose to goal pose
+     * @param traj The estimated trajectory
+     * @param goal The pose of goal
+     * @return The distance of current pose to goal pose
+    */
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
+    /**
+     * @brief Calculate difference of target velocity from estimated velocity
+     * @return The difference of velocity
+    */
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
+    /**
+     * @brief Caluclate distance from obstacle
+     * @param traj Theestimated trajectory
+     * @param obs_list The gird map informations which there is obstacle or not
+     * @return The inverde of distance from obstacle
+    */
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
+    /**
+     * @brief Calculate the pose of robot 
+     * @param velocity The velocity of robot
+     * @param yawrate The angular velocity of robot
+     * @param state The constractor setting pose information
+    */
     void motion(State& state, const double velocity, const double yawrate);
+    /**
+     * @brief Change map coordinates to robot coordinates
+     * @return The position of obstacle
+    */
     std::vector<std::vector<float>> raycast();
+    /**
+     * @brief  Calculate the position of obstacle
+     * @return The position of obstacle
+    */
     std::vector<std::vector<float>> scan_to_obs();
+    /**
+     * @brief Publish candidate trajectories
+     * @param trajectories Candidated trajectory
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param trajectories_size Size of candidate trajectories
+     * @param pub Publisher of candidate trajectories
+    */
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
+    /**
+     * @brief Publish candidate trajectory
+     * @param trajectory Selected trajectry
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param pub Publisher of candidate trajectory
+    */
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
+    /**
+     * @brief Execut dwa planner
+     * @param window Dynamic window
+     * @param goal Goal pose
+     * @param obs_list Obstacle's position  
+    */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
 protected:
