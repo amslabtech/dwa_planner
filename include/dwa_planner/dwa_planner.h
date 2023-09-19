@@ -27,7 +27,7 @@ class DWAPlanner
 {
 public:
     /**
-     * @brief Constructor
+     * @brief Constructor for the DWAPlanner
     */
     DWAPlanner(void);
 
@@ -39,19 +39,19 @@ public:
     public:
         /**
          * @brief Constractor
-         * @param[in] _x Number of robot position x
-         * @param[in] _y Number of robot position y
-         * @param[in] _yaw Number of robot orientation yaw
-         * @param[in] _velocity Numbre of robot linear velocity
-         * @param[in] _yawrate Number of robot angular velocity
+         * @param x The x position of robot
+         * @param y The y position of robot
+         * @param yaw The orientation of robot
+         * @param velocity The linear velocity of robot
+         * @param yawrate The angular velocity of robot
         */
         State(double, double, double, double, double);
 
-        double x;// robot position x
-        double y;// robot posiiton y
-        double yaw;// robot orientation yaw
-        double velocity;// robot linear velocity
-        double yawrate;// robot angular velocity
+        double x;
+        double y;
+        double yaw;
+        double velocity;
+        double yawrate;
     private:
     };
 
@@ -66,18 +66,18 @@ public:
         */
         Window(void);
         /**
-         * @brief Constructor
-         * @param[in] _min_velocity Number of minimum velocity
-         * @param[in] _max_velocity Number of maximum velocity
-         * @param[in] _min_yawrate Number of minimum angular velocity
-         * @param[in] _max_yawrate Number of maximam angular velocity
+         * @brief Constructor 
+         * @param min_velocity The minimum velocity of robot
+         * @param max_velocity The maximum velocity of robot
+         * @param min_yawrate The minimum angular velocity of robot
+         * @param max_yawrate The maximum angular velocity of robot
         */
         Window(const double, const double, const double, const double);
 
-        double min_velocity;// minimum velocity
-        double max_velocity;// maximum velocity
-        double min_yawrate;// minimun angular velocity
-        double max_yawrate;// maximum angular velocity
+        double min_velocity;
+        double max_velocity;
+        double min_yawrate;
+        double max_yawrate;
     private:
     };
 
@@ -86,23 +86,23 @@ public:
     */
     void process(void);
     /**
-     * @brief set local goal
+     * @brief A callback to hanldle buffering locacl goal messages
     */
     void local_goal_callback(const geometry_msgs::PoseStampedConstPtr&);
     /**
-     * @brief set scan information
+     * @brief A callback to hanldle buffering scan messages
     */
     void scan_callback(const sensor_msgs::LaserScanConstPtr&);
     /**
-     * @brief set lacal map
+     * @brief A callback to hanldle buffering local map messages
     */
     void local_map_callback(const nav_msgs::OccupancyGridConstPtr&);
     /**
-     * @brief set odometry information
+     * @brief A callback to hanldle buffering odometry messages
     */
     void odom_callback(const nav_msgs::OdometryConstPtr&);
     /**
-     * @brief set target velocity information
+     * @brief A callback to hanldle buffering target velocity messages
     */
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
     /**
@@ -111,9 +111,9 @@ public:
     */
     Window calc_dynamic_window(const geometry_msgs::Twist&);
     /**
-     * @brief calclating the distance of current pose to goal pose
-     * @param[in] traj estimated trajectory
-     * @param[in] goal pose of goal
+     * @brief calclat the distance of current pose to goal pose
+     * @param traj estimated 
+     * @param goal pose of goal
      * @return float distance of current pose to goal pose
     */
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
@@ -124,16 +124,16 @@ public:
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
     /**
      * @brief calculating distance from obstacle
-     * @param[in] traj estimated trajectory
-     * @param[in] obs_list gird map informations which there is obstacle or not
+     * @param traj estimated trajectory
+     * @param obs_list gird map informations which there is obstacle or not
      * @return float inverde of distance from obstacle
     */
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     /**
      * @berif calculating pose 
-     * @param[in] velocity velocity
-     * @param[in] yawrate angular velocity
-     * @param[out] state constractor setting pose information
+     * @param velocity velocity of robot
+     * @param yawrate angular velocity of robot
+     * @param state constractor setting pose information
     */
     void motion(State& state, const double velocity, const double yawrate);
     /**
@@ -148,28 +148,28 @@ public:
     std::vector<std::vector<float>> scan_to_obs();
     /**
      * @brief publishing candidate trajectories
-     * @param[in] trajectories candidated trajectory
-     * @param[in] r number of red in rgb color chart
-     * @param[in] g number of green in rgb color chart
-     * @param[in] b number of blue in rgb color chart
-     * @param[in] trajectories_size number of size about 
-     * @param[out] pub publisher of candidate trajectories
+     * @param trajectories candidated trajectory
+     * @param r number of red in rgb color chart
+     * @param g number of green in rgb color chart
+     * @param b number of blue in rgb color chart
+     * @param trajectories_size number of size about 
+     * @param pub publisher of candidate trajectories
     */
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
     /**
      * @brief publishing candidate trajectory
-     * @param[in] trajectory selected trajectry
-     * @param[in] r number of red in rgb color chart
-     * @param[in] g number of green in rgb color chart
-     * @param[in] b number of blue in rgb color chart
-     * @param[out] pub publisher of candidate trajectory
+     * @param trajectory selected trajectry
+     * @param r number of red in rgb color chart
+     * @param g number of green in rgb color chart
+     * @param b number of blue in rgb color chart
+     * @param pub publisher of candidate trajectory
     */
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
     /**
      * @brief executing dwa planner
-     * @param[in] window class of dynamic window
-     * @param[in] goal vector3d of goal pose
-     * @param[in] obs_list vector of obstacle's position  
+     * @param window class of dynamic window
+     * @param goal vector3d of goal pose
+     * @param obs_list vector of obstacle's position  
     */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
