@@ -21,7 +21,7 @@
 #include <Eigen/Dense>
 
 /**
- * @brief Class for dwa planning
+ * @brief Class for dwa planner
 */
 class DWAPlanner
 {
@@ -82,7 +82,7 @@ public:
     };
 
     /**
-     * @brief calculating local path plan
+     * @brief Calculate local path plan
     */
     void process(void);
     /**
@@ -106,70 +106,70 @@ public:
     */
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
     /**
-     * @brief calculating dynamic window
-     * @return class The dynamic window
+     * @brief Calculate dynamic window
+     * @return The dynamic window
     */
     Window calc_dynamic_window(const geometry_msgs::Twist&);
     /**
-     * @brief calclat the distance of current pose to goal pose
+     * @brief Calculate the distance of current pose to goal pose
      * @param traj The estimated trajectory
      * @param goal The pose of goal
      * @return The distance of current pose to goal pose
     */
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     /**
-     * @brief calculat difference of target velocity from estimated velocity
+     * @brief Calculate difference of target velocity from estimated velocity
      * @return The difference of velocity
     */
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
     /**
-     * @brief caluclat distance from obstacle
+     * @brief Caluclate distance from obstacle
      * @param traj Theestimated trajectory
      * @param obs_list The gird map informations which there is obstacle or not
      * @return The inverde of distance from obstacle
     */
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     /**
-     * @brief calculat pose 
+     * @brief Calculate the pose of robot 
      * @param velocity The velocity of robot
      * @param yawrate The angular velocity of robot
      * @param state The constractor setting pose information
     */
     void motion(State& state, const double velocity, const double yawrate);
     /**
-     * @brief change map coordinates to robot coordinates
+     * @brief Change map coordinates to robot coordinates
      * @return The position of obstacle
     */
     std::vector<std::vector<float>> raycast();
     /**
-     * @brief calclat the position of obstacle
+     * @brief  Calculate the position of obstacle
      * @return The position of obstacle
     */
     std::vector<std::vector<float>> scan_to_obs();
     /**
-     * @brief publish candidate trajectories
-     * @param trajectories candidated trajectory
-     * @param r number of red in rgb color chart
-     * @param g number of green in rgb color chart
-     * @param b number of blue in rgb color chart
-     * @param trajectories_size number of size about 
-     * @param pub publisher of candidate trajectories
+     * @brief Publish candidate trajectories
+     * @param trajectories Candidated trajectory
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param trajectories_size Size of candidate trajectories
+     * @param pub Publisher of candidate trajectories
     */
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
     /**
-     * @brief publish candidate trajectory
-     * @param trajectory selected trajectry
-     * @param r number of red in rgb color chart
-     * @param g number of green in rgb color chart
-     * @param b number of blue in rgb color chart
-     * @param pub publisher of candidate trajectory
+     * @brief Publish candidate trajectory
+     * @param trajectory Selected trajectry
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param pub Publisher of candidate trajectory
     */
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
     /**
-     * @brief execut dwa planner
-     * @param window class of dynamic window
-     * @param goal vector3d of goal pose
-     * @param obs_list vector of obstacle's position  
+     * @brief Execut dwa planner
+     * @param window Dynamic window
+     * @param goal Goal pose
+     * @param obs_list Obstacle's position  
     */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
