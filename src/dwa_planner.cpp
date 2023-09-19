@@ -61,7 +61,7 @@ DWAPlanner::DWAPlanner(void)
     }
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
-    base_robot_footprint_sub = nh.subscribe("/robot_footprint", 1, &DWAPlanner::robot_footprint_callback, this);
+    base_robot_footprint_sub = nh.subscribe("/footprint", 1, &DWAPlanner::robot_footprint_callback, this);
     nav_goal_sub = nh.subscribe("/move_base_simple/goal", 1, &DWAPlanner::nav_goal_callback, this);
     footprint_pub = nh.advertise<geometry_msgs::PolygonStamped>("moved_robot_footprint", 1);
 }

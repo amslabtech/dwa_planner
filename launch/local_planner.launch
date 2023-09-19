@@ -16,6 +16,6 @@
         <remap from="/local_goal" to="/local_goal"/>
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
         <remap from="/odom" to="/odom"/>
-        <remap from="/robot_footprint" to="/robot_footprint"/>
+        <remap from="/footprint" to="/footprint"/>
     </node>
 </launch>
