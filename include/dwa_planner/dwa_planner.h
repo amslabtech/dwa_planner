@@ -107,47 +107,47 @@ public:
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
     /**
      * @brief calculating dynamic window
-     * @return class dynamic window
+     * @return class The dynamic window
     */
     Window calc_dynamic_window(const geometry_msgs::Twist&);
     /**
      * @brief calclat the distance of current pose to goal pose
-     * @param traj estimated 
-     * @param goal pose of goal
-     * @return float distance of current pose to goal pose
+     * @param traj The estimated trajectory
+     * @param goal The pose of goal
+     * @return The distance of current pose to goal pose
     */
     float calc_to_goal_cost(const std::vector<State>& traj, const Eigen::Vector3d& goal);
     /**
-     * @brief calculating difference of target velocity from estimated velocity
-     * @return float difference of velocity
+     * @brief calculat difference of target velocity from estimated velocity
+     * @return The difference of velocity
     */
     float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
     /**
-     * @brief calculating distance from obstacle
-     * @param traj estimated trajectory
-     * @param obs_list gird map informations which there is obstacle or not
-     * @return float inverde of distance from obstacle
+     * @brief caluclat distance from obstacle
+     * @param traj Theestimated trajectory
+     * @param obs_list The gird map informations which there is obstacle or not
+     * @return The inverde of distance from obstacle
     */
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     /**
-     * @berif calculating pose 
-     * @param velocity velocity of robot
-     * @param yawrate angular velocity of robot
-     * @param state constractor setting pose information
+     * @brief calculat pose 
+     * @param velocity The velocity of robot
+     * @param yawrate The angular velocity of robot
+     * @param state The constractor setting pose information
     */
     void motion(State& state, const double velocity, const double yawrate);
     /**
-     * @brief changing map coordinates to robot coordinates
-     * @return vector position of obstacle
+     * @brief change map coordinates to robot coordinates
+     * @return The position of obstacle
     */
     std::vector<std::vector<float>> raycast();
     /**
-     * @brief caluculating position of obstacle
-     * @return vector position of obstacle
+     * @brief calclat the position of obstacle
+     * @return The position of obstacle
     */
     std::vector<std::vector<float>> scan_to_obs();
     /**
-     * @brief publishing candidate trajectories
+     * @brief publish candidate trajectories
      * @param trajectories candidated trajectory
      * @param r number of red in rgb color chart
      * @param g number of green in rgb color chart
@@ -157,7 +157,7 @@ public:
     */
     void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
     /**
-     * @brief publishing candidate trajectory
+     * @brief publish candidate trajectory
      * @param trajectory selected trajectry
      * @param r number of red in rgb color chart
      * @param g number of green in rgb color chart
@@ -166,7 +166,7 @@ public:
     */
     void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
     /**
-     * @brief executing dwa planner
+     * @brief execut dwa planner
      * @param window class of dynamic window
      * @param goal vector3d of goal pose
      * @param obs_list vector of obstacle's position  
