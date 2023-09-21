@@ -107,10 +107,6 @@ public:
     */
     void target_velocity_callback(const geometry_msgs::TwistConstPtr&);
     /**
-     * @brief
-    */
-    void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
-    /**
      * @brief Calculate dynamic window
      * @return The dynamic window
     */
@@ -152,6 +148,37 @@ public:
     */
     std::vector<std::vector<float>> scan_to_obs();
     /**
+     * @brief Publish candidate trajectories
+     * @param trajectories Candidated trajectory
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param trajectories_size Size of candidate trajectories
+     * @param pub Publisher of candidate trajectories
+    */
+    void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
+    /**
+     * @brief Publish candidate trajectory
+     * @param trajectory Selected trajectry
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param pub Publisher of candidate trajectory
+    */
+    void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
+    /**
+     * @brief Execut dwa planner
+     * @param window Dynamic window
+     * @param goal Goal pose
+     * @param obs_list Obstacle's position
+    */
+    std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
+
+    /**
+     * @brief
+    */
+    void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
+    /**
      * @brief
      * @param
      * @param
@@ -182,32 +209,6 @@ public:
      * @param
     */
     geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint);
-    /**
-     * @brief Publish candidate trajectories
-     * @param trajectories Candidated trajectory
-     * @param r Rgb color chart number of red
-     * @param g Rgb color chart number of green
-     * @param b Rgb color chart number of blue
-     * @param trajectories_size Size of candidate trajectories
-     * @param pub Publisher of candidate trajectories
-    */
-    void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
-    /**
-     * @brief Publish candidate trajectory
-     * @param trajectory Selected trajectry
-     * @param r Rgb color chart number of red
-     * @param g Rgb color chart number of green
-     * @param b Rgb color chart number of blue
-     * @param pub Publisher of candidate trajectory
-    */
-    void visualize_trajectory(const std::vector<State>&, const double, const double, const double, const ros::Publisher&);
-    /**
-     * @brief Execut dwa planner
-     * @param window Dynamic window
-     * @param goal Goal pose
-     * @param obs_list Obstacle's position
-    */
-    std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
 protected:
     double HZ;
