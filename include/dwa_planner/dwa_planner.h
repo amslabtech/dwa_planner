@@ -175,12 +175,12 @@ public:
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
 
-    void robot_footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
+    void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
     float calc_dist_from_robot(const std::vector<float>& obstacle, const State& state);
-    geometry_msgs::PolygonStamped move_footprint(const State& target_pose);
-    bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& robot_footprint, const State& state);
+    geometry_msgs::PolygonStamped transform_footprint(const State& target_pose);
+    bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
     bool is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle);
-    geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped robot_footprint);
+    geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint);
 
 
 protected:
@@ -229,10 +229,10 @@ protected:
     bool local_map_updated;
     bool odom_updated;
 
-    geometry_msgs::PolygonStamped base_robot_footprint;
-    bool robot_footprint_subscribed;
-    ros::Subscriber base_robot_footprint_sub;
-    ros::Publisher footprint_pub;
+    geometry_msgs::PolygonStamped base_footprint;
+    bool footprint_subscribed;
+    ros::Subscriber footprint_sub;
+    ros::Publisher predict_footprint_pub;
 };
 
 #endif //__DWA_PLANNER_H
