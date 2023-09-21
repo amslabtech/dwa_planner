@@ -10,6 +10,7 @@
 #include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -173,6 +174,42 @@ public:
     */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
+    /**
+     * @brief
+    */
+    void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
+    /**
+     * @brief
+     * @param
+     * @param
+    */
+    float calc_dist_from_robot(const std::vector<float>& obstacle, const State& state);
+    /**
+     * @brief
+     * @param
+    */
+    geometry_msgs::PolygonStamped transform_footprint(const State& target_pose);
+    /**
+     * @brief
+     * @param
+     * @param
+     * @param
+    */
+    bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
+    /**
+     * @brief
+     * @param
+     * @param
+    */
+    bool is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle);
+    /**
+     * @brief
+     * @param
+     * @param
+     * @param
+    */
+    geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint);
+
 protected:
     double HZ;
     std::string ROBOT_FRAME;
@@ -187,13 +224,16 @@ protected:
     double YAWRATE_RESOLUTION;
     double ANGLE_RESOLUTION;
     double PREDICT_TIME;
+    double DT;
     double TO_GOAL_COST_GAIN;
     double SPEED_COST_GAIN;
     double OBSTACLE_COST_GAIN;
-    double DT;
-    bool USE_SCAN_AS_INPUT;
     double GOAL_THRESHOLD;
     double TURN_DIRECTION_THRESHOLD;
+    double ANGLE_TO_GOAL_TH;
+    bool USE_SCAN_AS_INPUT;
+    bool USE_FOOTPRINT;
+    int OBS_SEARCH_REDUCTION_RATE;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
@@ -201,21 +241,26 @@ protected:
     ros::Publisher velocity_pub;
     ros::Publisher candidate_trajectories_pub;
     ros::Publisher selected_trajectory_pub;
-    ros::Subscriber local_map_sub;
+    ros::Publisher predict_footprint_pub;
     ros::Subscriber scan_sub;
+    ros::Subscriber local_map_sub;
     ros::Subscriber local_goal_sub;
     ros::Subscriber odom_sub;
     ros::Subscriber target_velocity_sub;
+    ros::Subscriber footprint_sub;
+
     tf::TransformListener listener;
 
     geometry_msgs::PoseStamped local_goal;
     sensor_msgs::LaserScan scan;
     nav_msgs::OccupancyGrid local_map;
     geometry_msgs::Twist current_velocity;
+    geometry_msgs::PolygonStamped base_footprint;
     bool local_goal_subscribed;
     bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
+    bool footprint_subscribed;
 };
 
 #endif //__DWA_PLANNER_H
