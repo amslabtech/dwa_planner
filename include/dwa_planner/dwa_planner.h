@@ -67,7 +67,7 @@ public:
         */
         Window(void);
         /**
-         * @brief Constructor
+         * @brief Constructor 
          * @param min_velocity The minimum velocity of robot
          * @param max_velocity The maximum velocity of robot
          * @param min_yawrate The minimum angular velocity of robot
@@ -131,7 +131,7 @@ public:
     */
     float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
     /**
-     * @brief Calculate the pose of robot
+     * @brief Calculate the pose of robot 
      * @param velocity The velocity of robot
      * @param yawrate The angular velocity of robot
      * @param state The constractor setting pose information
@@ -170,14 +170,10 @@ public:
      * @brief Execut dwa planner
      * @param window Dynamic window
      * @param goal Goal pose
-     * @param obs_list Obstacle's position
+     * @param obs_list Obstacle's position  
     */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
-    /**
-     * @brief
-    */
-    void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
     /**
      * @brief
      * @param
