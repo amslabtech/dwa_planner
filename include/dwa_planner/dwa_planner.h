@@ -202,6 +202,7 @@ protected:
     double OBSTACLE_COST_GAIN;
     double DT;
     bool USE_SCAN_AS_INPUT;
+    bool USE_FOOTPRINT;
     double GOAL_THRESHOLD;
     double TURN_DIRECTION_THRESHOLD;
     double ANGLE_TO_GOAL_TH;

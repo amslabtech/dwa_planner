@@ -1,7 +1,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), footprint_subscribed(false)
+    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), footprint_subscribed(true)
 {
     local_nh.param("HZ", HZ, {20});
     local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
@@ -20,9 +20,10 @@ DWAPlanner::DWAPlanner(void)
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
     local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
+    local_nh.param("USE_FOOTPRINT", USE_FOOTPRINT, {false});
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
-    local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {1.0});
+    local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
     local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
     DT = 1.0 / HZ;
 
@@ -44,6 +45,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << TO_GOAL_COST_GAIN);
     ROS_INFO_STREAM("SPEED_COST_GAIN: " << SPEED_COST_GAIN);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << OBSTACLE_COST_GAIN);
+    ROS_INFO_STREAM("USE_SCAN_AS_INPUT: " << USE_SCAN_AS_INPUT);
+    ROS_INFO_STREAM("USE_FOOTPRINT: " << USE_FOOTPRINT);
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << GOAL_THRESHOLD);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << ANGLE_TO_GOAL_TH);
@@ -63,6 +66,8 @@ DWAPlanner::DWAPlanner(void)
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
     footprint_sub = nh.subscribe("/footprint", 1, &DWAPlanner::footprint_callback, this);
     predict_footprint_pub = nh.advertise<geometry_msgs::PolygonStamped>("predict_footprint", 1);
+
+    if(USE_FOOTPRINT) footprint_subscribed = false;
 }
 
 DWAPlanner::State::State(double _x, double _y, double _yaw, double _velocity, double _yawrate)
@@ -278,7 +283,12 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
             continue;
         }
         for(const auto& obs : obs_list){
-            float dist = calc_dist_from_robot(obs, state);
+            float dist;
+            if(USE_FOOTPRINT)
+                dist = calc_dist_from_robot(obs, state);
+            else
+                dist = sqrt((state.x - obs[0])*(state.x - obs[0]) + (state.y - obs[1])*(state.y - obs[1]));
+
             if(dist <= local_map.info.resolution){
                 cost = 1e6;
                 return cost;
