@@ -55,17 +55,17 @@ DWAPlanner::DWAPlanner(void)
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
     selected_trajectory_pub = local_nh.advertise<visualization_msgs::Marker>("selected_trajectory", 1);
+    predict_footprint_pub = nh.advertise<geometry_msgs::PolygonStamped>("predict_footprint", 1);
 
     local_goal_sub = nh.subscribe("/local_goal", 1, &DWAPlanner::local_goal_callback, this);
+    odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
+    target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
+    footprint_sub = nh.subscribe("/footprint", 1, &DWAPlanner::footprint_callback, this);
     if(USE_SCAN_AS_INPUT){
         scan_sub = nh.subscribe("/scan", 1, &DWAPlanner::scan_callback, this);
     }else{
         local_map_sub = nh.subscribe("/local_map", 1, &DWAPlanner::local_map_callback, this);
     }
-    odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
-    target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
-    footprint_sub = nh.subscribe("/footprint", 1, &DWAPlanner::footprint_callback, this);
-    predict_footprint_pub = nh.advertise<geometry_msgs::PolygonStamped>("predict_footprint", 1);
 
     if(USE_FOOTPRINT) footprint_subscribed = false;
 }
@@ -212,6 +212,7 @@ void DWAPlanner::process(void)
                 cmd_vel.linear.x = best_traj[0].velocity;
                 cmd_vel.angular.z = best_traj[0].yawrate;
                 visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+                if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
             }else{
                 cmd_vel.linear.x = 0.0;
                 if(fabs(goal[2])>TURN_DIRECTION_THRESHOLD){
