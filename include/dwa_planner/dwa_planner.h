@@ -176,6 +176,10 @@ public:
 
     /**
      * @brief
+    */
+    void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
+    /**
+     * @brief
      * @param
      * @param
     */
