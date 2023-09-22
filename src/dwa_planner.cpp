@@ -138,7 +138,7 @@ void DWAPlanner::odom_callback(const nav_msgs::OdometryConstPtr& msg)
 void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& msg)
 {
     TARGET_VELOCITY = msg->linear.x;
-    ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
+    ROS_INFO_THROTTLE(1.0, "target velocity was updated to %f [m/s]", TARGET_VELOCITY);
 }
 
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
