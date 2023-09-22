@@ -206,13 +206,17 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     ROS_INFO_STREAM("num of trajectories: " << trajectories.size());
     ROS_INFO(" ");
 
-    visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
     if(min_cost == 1e6){
         std::vector<State> traj;
         State state(0.0, 0.0, 0.0, 0.0, 0.0);
         traj.push_back(state);
         best_traj = traj;
+        visualize_trajectories(trajectories, 0.5, 0, 0.5, 1000, candidate_trajectories_pub);
+    }else{
+        visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
+
     }
+
     return best_traj;
 }
 
