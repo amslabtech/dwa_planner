@@ -71,7 +71,7 @@ public:
         */
         Window(void);
         /**
-         * @brief Constructor 
+         * @brief Constructor
          * @param min_velocity The minimum velocity of robot
          * @param max_velocity The maximum velocity of robot
          * @param min_yawrate The minimum angular velocity of robot
@@ -139,7 +139,7 @@ public:
     */
     float calc_obs_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>& obs_list);
     /**
-     * @brief Calculate the pose of robot 
+     * @brief Calculate the pose of robot
      * @param velocity The velocity of robot
      * @param yawrate The angular velocity of robot
      * @param state The constractor setting pose information
@@ -224,7 +224,7 @@ public:
      * @brief Execut dwa planner
      * @param window Dynamic window
      * @param goal Goal pose
-     * @param obs_list Obstacle's position  
+     * @param obs_list Obstacle's position
     */
     std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
 
@@ -238,8 +238,6 @@ protected:
     double MAX_ACCELERATION;
     double MAX_D_YAWRATE;
     double MAX_DIST;
-    double VELOCITY_RESOLUTION;
-    double YAWRATE_RESOLUTION;
     double ANGLE_RESOLUTION;
     double PREDICT_TIME;
     double DT;
@@ -251,8 +249,9 @@ protected:
     double ANGLE_TO_GOAL_TH;
     bool USE_SCAN_AS_INPUT;
     bool USE_FOOTPRINT;
-    int OBS_SEARCH_REDUCTION_RATE;
     int SUB_COUNT_TH;
+    int VELOCITY_SAMPLES;
+    int YAWRATE_SAMPLES;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;

@@ -20,10 +20,9 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
     local_nh.param("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
     local_nh.param("MAX_DIST", MAX_DIST, {10.0});
-    local_nh.param("VELOCITY_RESOLUTION", VELOCITY_RESOLUTION, {0.1});
-    local_nh.param("YAWRATE_RESOLUTION", YAWRATE_RESOLUTION, {0.1});
     local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
     local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
+    local_nh.param("DT", DT, {0.1});
     local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
@@ -32,13 +31,12 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
-    local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
     local_nh.param("SUB_COUNT_TH", SUB_COUNT_TH, {3});
-    DT = 1.0 / HZ;
+    local_nh.param("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
+    local_nh.param("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
 
     ROS_INFO("=== DWA Planner ===");
     ROS_INFO_STREAM("HZ: " << HZ);
-    ROS_INFO_STREAM("DT: " << DT);
     ROS_INFO_STREAM("ROBOT_FRAME: " << ROBOT_FRAME);
     ROS_INFO_STREAM("TARGET_VELOCITY: " << TARGET_VELOCITY);
     ROS_INFO_STREAM("MAX_VELOCITY: " << MAX_VELOCITY);
@@ -47,10 +45,9 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("MAX_ACCELERATION: " << MAX_ACCELERATION);
     ROS_INFO_STREAM("MAX_D_YAWRATE: " << MAX_D_YAWRATE);
     ROS_INFO_STREAM("MAX_DIST: " << MAX_DIST);
-    ROS_INFO_STREAM("VELOCITY_RESOLUTION: " << VELOCITY_RESOLUTION);
-    ROS_INFO_STREAM("YAWRATE_RESOLUTION: " << YAWRATE_RESOLUTION);
     ROS_INFO_STREAM("ANGLE_RESOLUTION: " << ANGLE_RESOLUTION);
     ROS_INFO_STREAM("PREDICT_TIME: " << PREDICT_TIME);
+    ROS_INFO_STREAM("DT: " << DT);
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << TO_GOAL_COST_GAIN);
     ROS_INFO_STREAM("SPEED_COST_GAIN: " << SPEED_COST_GAIN);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << OBSTACLE_COST_GAIN);
@@ -59,8 +56,9 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << GOAL_THRESHOLD);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << ANGLE_TO_GOAL_TH);
-    ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
     ROS_INFO_STREAM("SUB_COUNT_TH: " << SUB_COUNT_TH);
+    ROS_INFO_STREAM("VELOCITY_SAMPLES: " << VELOCITY_SAMPLES);
+    ROS_INFO_STREAM("YAWRATE_SAMPLES: " << YAWRATE_SAMPLES);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -140,7 +138,7 @@ void DWAPlanner::odom_callback(const nav_msgs::OdometryConstPtr& msg)
 void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& msg)
 {
     TARGET_VELOCITY = msg->linear.x;
-    ROS_WARN_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
+    ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
 }
 
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
@@ -162,8 +160,10 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
 
-    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
+    const double velocity_resolution = (dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES;
+    const double yawrate_resolution = (dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES;
+    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=velocity_resolution){
+        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=yawrate_resolution){
             std::vector<State> traj;
             generate_trajectory(traj, v, y);
             trajectories.push_back(traj);
@@ -243,9 +243,9 @@ bool DWAPlanner::can_move()
 {
     if(!local_goal_subscribed) ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
     if(!footprint_subscribed){ ROS_WARN_THROTTLE(1.0, "Robot Footprint has not been updated"); }
-    if(!scan_updated) ROS_WARN_THROTTLE(1.0, "Scan has not been updated");
-    if(!local_map_updated) ROS_WARN_THROTTLE(1.0, "Local map has not been updated");
-    if(!odom_updated) ROS_WARN_THROTTLE(1.0, "Odom has not been updated");
+    if(SUB_COUNT_TH < scan_not_sub_count) ROS_WARN_THROTTLE(1.0, "Scan has not been updated");
+    if(SUB_COUNT_TH < local_map_not_sub_count) ROS_WARN_THROTTLE(1.0, "Local map has not been updated");
+    if(SUB_COUNT_TH < odom_not_sub_count) ROS_WARN_THROTTLE(1.0, "Odom has not been updated");
 
     if(!scan_updated) scan_not_sub_count++;
     if(!local_map_updated) local_map_not_sub_count++;
@@ -288,7 +288,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         else
             cmd_vel.angular.z = 0.0;
     }
-    
+
     return cmd_vel;
 }
 
@@ -318,12 +318,7 @@ float DWAPlanner::calc_obs_cost(const std::vector<State>& traj, const std::vecto
 {
     float cost = 0.0;
     float min_dist = 1e3;
-    int count = 0;
     for(const auto& state : traj){
-        if(count%OBS_SEARCH_REDUCTION_RATE != 0){
-            count++;
-            continue;
-        }
         for(const auto& obs : obs_list){
             float dist;
             if(USE_FOOTPRINT)
@@ -337,7 +332,6 @@ float DWAPlanner::calc_obs_cost(const std::vector<State>& traj, const std::vecto
             }
             min_dist = std::min(min_dist, dist);
         }
-        count++;
     }
     cost = 1.0 / min_dist;
     return cost;
@@ -391,7 +385,7 @@ geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obs
         point.y = vector_A.y() + s*(vector_B-vector_A).y();
 
         // cross
-        if(!(s < 0.0 || 1.0 < s || t < 0.0 || 1.0 < t))
+        if(!(s < 0.0 or 1.0 < s or t < 0.0 or 1.0 < t))
             return point;
 
     }
@@ -480,7 +474,7 @@ bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, c
     const Eigen::Vector3d vector_AP = vector_P - vector_A;
     const Eigen::Vector3d cross3 = vector_CA.cross(vector_AP);
 
-    if((0<cross1.z() and 0<cross2.z() and 0<cross3.z()) || (cross1.z()<0 and cross2.z()<0 and cross3.z()<0))
+    if((0<cross1.z() and 0<cross2.z() and 0<cross3.z()) or (cross1.z()<0 and cross2.z()<0 and cross3.z()<0))
         return true;
     else
         return false;
@@ -517,7 +511,7 @@ void DWAPlanner::raycast(std::vector<std::vector<float>>& obs_list)
             float y = dist * sin(angle);
             const int i = int(floor((x - local_map.info.origin.position.x) / local_map.info.resolution));
             const int j = int(floor((y - local_map.info.origin.position.y) / local_map.info.resolution));
-            if( (i < 0 || i >= local_map.info.width) || (j < 0 || j >= local_map.info.height) ){
+            if( (i < 0 or i >= local_map.info.width) or (j < 0 or j >= local_map.info.height) ){
                 break;
             }
             if(local_map.data[j*local_map.info.width + i] == 100){
