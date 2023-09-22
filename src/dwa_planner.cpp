@@ -31,7 +31,6 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
-    local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
     local_nh.param("SUB_COUNT_TH", SUB_COUNT_TH, {3});
     local_nh.param("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
     local_nh.param("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
@@ -57,7 +56,6 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << GOAL_THRESHOLD);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << ANGLE_TO_GOAL_TH);
-    ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
     ROS_INFO_STREAM("SUB_COUNT_TH: " << SUB_COUNT_TH);
     ROS_INFO_STREAM("VELOCITY_SAMPLES: " << VELOCITY_SAMPLES);
     ROS_INFO_STREAM("YAWRATE_SAMPLES: " << YAWRATE_SAMPLES);
@@ -140,7 +138,7 @@ void DWAPlanner::odom_callback(const nav_msgs::OdometryConstPtr& msg)
 void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& msg)
 {
     TARGET_VELOCITY = msg->linear.x;
-    ROS_WARN_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
+    ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
 }
 
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
@@ -290,7 +288,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         else
             cmd_vel.angular.z = 0.0;
     }
-    
+
     return cmd_vel;
 }
 
@@ -320,12 +318,7 @@ float DWAPlanner::calc_obs_cost(const std::vector<State>& traj, const std::vecto
 {
     float cost = 0.0;
     float min_dist = 1e3;
-    int count = 0;
     for(const auto& state : traj){
-        if(count%OBS_SEARCH_REDUCTION_RATE != 0){
-            count++;
-            continue;
-        }
         for(const auto& obs : obs_list){
             float dist;
             if(USE_FOOTPRINT)
@@ -339,7 +332,6 @@ float DWAPlanner::calc_obs_cost(const std::vector<State>& traj, const std::vecto
             }
             min_dist = std::min(min_dist, dist);
         }
-        count++;
     }
     cost = 1.0 / min_dist;
     return cost;
