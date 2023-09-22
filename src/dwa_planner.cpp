@@ -1,5 +1,4 @@
 #include "dwa_planner/dwa_planner.h"
-#include "geometry_msgs/Twist.h"
 
 DWAPlanner::DWAPlanner(void):
     local_nh("~"),
@@ -34,6 +33,7 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
     local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
     local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
+    local_nh.param("SUB_COUNT_TH", SUB_COUNT_TH, {3});
     DT = 1.0 / HZ;
 
     ROS_INFO("=== DWA Planner ===");
@@ -60,6 +60,7 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << TURN_DIRECTION_THRESHOLD);
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << ANGLE_TO_GOAL_TH);
     ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
+    ROS_INFO_STREAM("SUB_COUNT_TH: " << SUB_COUNT_TH);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -243,6 +244,12 @@ bool DWAPlanner::can_move()
     if(!scan_updated) scan_not_sub_count++;
     if(!local_map_updated) local_map_not_sub_count++;
     if(!odom_updated) odom_not_sub_count++;
+
+    ROS_WARN_THROTTLE(1.0, "===");
+    ROS_WARN_THROTTLE(1.0, "SUB_COUNT_TH: %d", SUB_COUNT_TH);
+    ROS_WARN_THROTTLE(1.0, "scan_not_sub_count: %d", scan_not_sub_count);
+    ROS_WARN_THROTTLE(1.0, "local_map_not_sub_count: %d", local_map_not_sub_count);
+    ROS_WARN_THROTTLE(1.0, "odom_not_sub_count: %d", odom_not_sub_count);
 
     if(local_goal_subscribed
         and footprint_subscribed
