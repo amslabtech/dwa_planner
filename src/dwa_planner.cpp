@@ -145,7 +145,6 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     std::vector<State> best_traj;
 
     for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-        ROS_WARN("search v");
         for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
             std::vector<State> traj;
             generate_trajectory(traj, v, y);
@@ -278,14 +277,6 @@ DWAPlanner::Window DWAPlanner::calc_dynamic_window(const geometry_msgs::Twist& c
     window.max_velocity = std::min((current_velocity.linear.x + MAX_ACCELERATION*DT), MAX_VELOCITY);
     window.min_yawrate = std::max((current_velocity.angular.z - MAX_D_YAWRATE*DT), -MAX_YAWRATE);
     window.max_yawrate = std::min((current_velocity.angular.z + MAX_D_YAWRATE*DT),  MAX_YAWRATE);
-
-    ROS_WARN("==");
-    ROS_WARN_STREAM("dw.max_v: " << window.max_velocity);
-    ROS_WARN_STREAM("dw.min_v: " << window.min_velocity);
-    ROS_WARN_STREAM("dw.max_y: " << window.max_yawrate);
-    ROS_WARN_STREAM("dw.min_y: " << window.min_yawrate);
-    ROS_WARN("==");
-
     return window;
 }
 
