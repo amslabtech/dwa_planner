@@ -140,7 +140,7 @@ void DWAPlanner::odom_callback(const nav_msgs::OdometryConstPtr& msg)
 void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr& msg)
 {
     TARGET_VELOCITY = msg->linear.x;
-    ROS_INFO_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
+    ROS_WARN_STREAM("target velocity was updated to " << TARGET_VELOCITY << "[m/s]");
 }
 
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
@@ -198,11 +198,13 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
             }
         }
     }
+    ROS_INFO("===");
     ROS_INFO_STREAM("Cost: " << min_cost);
-    ROS_INFO_STREAM("- Goal cost: " << min_goal_cost);
-    ROS_INFO_STREAM("- Obs cost: " << min_obs_cost);
-    ROS_INFO_STREAM("- Speed cost: " << min_speed_cost);
+    ROS_INFO_STREAM("\tGoal cost: " << min_goal_cost);
+    ROS_INFO_STREAM("\tObs cost: " << min_obs_cost);
+    ROS_INFO_STREAM("\tSpeed cost: " << min_speed_cost);
     ROS_INFO_STREAM("num of trajectories: " << trajectories.size());
+    ROS_INFO(" ");
 
     visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
     if(min_cost == 1e6){
@@ -245,12 +247,6 @@ bool DWAPlanner::can_move()
     if(!local_map_updated) local_map_not_sub_count++;
     if(!odom_updated) odom_not_sub_count++;
 
-    ROS_WARN_THROTTLE(1.0, "===");
-    ROS_WARN_THROTTLE(1.0, "SUB_COUNT_TH: %d", SUB_COUNT_TH);
-    ROS_WARN_THROTTLE(1.0, "scan_not_sub_count: %d", scan_not_sub_count);
-    ROS_WARN_THROTTLE(1.0, "local_map_not_sub_count: %d", local_map_not_sub_count);
-    ROS_WARN_THROTTLE(1.0, "odom_not_sub_count: %d", odom_not_sub_count);
-
     if(local_goal_subscribed
         and footprint_subscribed
         and scan_not_sub_count <= SUB_COUNT_TH
@@ -265,7 +261,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 {
     Window dynamic_window = calc_dynamic_window(current_velocity);
     Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
-    ROS_WARN_STREAM("local goal: (" << goal[0] << " [m]," << goal[1] << " [m]," << goal[2]/M_PI*180 << " [deg])");
+    ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2]/M_PI*180);
 
     geometry_msgs::Twist cmd_vel;
     double angle_to_goal = atan2(goal[1], goal[0]);
@@ -289,7 +285,6 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
             cmd_vel.angular.z = 0.0;
     }
     
-    ROS_INFO_STREAM("cmd_vel: (" << cmd_vel.linear.x << "[m/s], " << cmd_vel.angular.z << "[rad/s])");
     return cmd_vel;
 }
 
