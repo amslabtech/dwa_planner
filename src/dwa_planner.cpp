@@ -20,10 +20,9 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
     local_nh.param("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
     local_nh.param("MAX_DIST", MAX_DIST, {10.0});
-    local_nh.param("VELOCITY_RESOLUTION", VELOCITY_RESOLUTION, {0.1});
-    local_nh.param("YAWRATE_RESOLUTION", YAWRATE_RESOLUTION, {0.1});
     local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
     local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
+    local_nh.param("DT", DT, {0.1});
     local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
     local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
     local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
@@ -34,11 +33,11 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
     local_nh.param("OBS_SEARCH_REDUCTION_RATE", OBS_SEARCH_REDUCTION_RATE, {1});
     local_nh.param("SUB_COUNT_TH", SUB_COUNT_TH, {3});
-    DT = 1.0 / HZ;
+    local_nh.param("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
+    local_nh.param("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
 
     ROS_INFO("=== DWA Planner ===");
     ROS_INFO_STREAM("HZ: " << HZ);
-    ROS_INFO_STREAM("DT: " << DT);
     ROS_INFO_STREAM("ROBOT_FRAME: " << ROBOT_FRAME);
     ROS_INFO_STREAM("TARGET_VELOCITY: " << TARGET_VELOCITY);
     ROS_INFO_STREAM("MAX_VELOCITY: " << MAX_VELOCITY);
@@ -47,10 +46,9 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("MAX_ACCELERATION: " << MAX_ACCELERATION);
     ROS_INFO_STREAM("MAX_D_YAWRATE: " << MAX_D_YAWRATE);
     ROS_INFO_STREAM("MAX_DIST: " << MAX_DIST);
-    ROS_INFO_STREAM("VELOCITY_RESOLUTION: " << VELOCITY_RESOLUTION);
-    ROS_INFO_STREAM("YAWRATE_RESOLUTION: " << YAWRATE_RESOLUTION);
     ROS_INFO_STREAM("ANGLE_RESOLUTION: " << ANGLE_RESOLUTION);
     ROS_INFO_STREAM("PREDICT_TIME: " << PREDICT_TIME);
+    ROS_INFO_STREAM("DT: " << DT);
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << TO_GOAL_COST_GAIN);
     ROS_INFO_STREAM("SPEED_COST_GAIN: " << SPEED_COST_GAIN);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << OBSTACLE_COST_GAIN);
@@ -61,6 +59,8 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << ANGLE_TO_GOAL_TH);
     ROS_INFO_STREAM("OBS_SEARCH_REDUCTION_RATE: " << OBS_SEARCH_REDUCTION_RATE);
     ROS_INFO_STREAM("SUB_COUNT_TH: " << SUB_COUNT_TH);
+    ROS_INFO_STREAM("VELOCITY_SAMPLES: " << VELOCITY_SAMPLES);
+    ROS_INFO_STREAM("YAWRATE_SAMPLES: " << YAWRATE_SAMPLES);
 
     velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -162,8 +162,10 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
 
-    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
-        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
+    const double velocity_resolution = (dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES;
+    const double yawrate_resolution = (dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES;
+    for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=velocity_resolution){
+        for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=yawrate_resolution){
             std::vector<State> traj;
             generate_trajectory(traj, v, y);
             trajectories.push_back(traj);

@@ -238,8 +238,6 @@ protected:
     double MAX_ACCELERATION;
     double MAX_D_YAWRATE;
     double MAX_DIST;
-    double VELOCITY_RESOLUTION;
-    double YAWRATE_RESOLUTION;
     double ANGLE_RESOLUTION;
     double PREDICT_TIME;
     double DT;
@@ -253,6 +251,8 @@ protected:
     bool USE_FOOTPRINT;
     int OBS_SEARCH_REDUCTION_RATE;
     int SUB_COUNT_TH;
+    int VELOCITY_SAMPLES;
+    int YAWRATE_SAMPLES;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
