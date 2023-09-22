@@ -149,12 +149,12 @@ public:
      * @brief Change map coordinates to robot coordinates
      * @return The position of obstacle
     */
-    std::vector<std::vector<float>> raycast();
+    void raycast(std::vector<std::vector<float>>& obs_list);
     /**
      * @brief  Calculate the position of obstacle
      * @return The position of obstacle
     */
-    std::vector<std::vector<float>> scan_to_obs();
+    void scan_to_obs(std::vector<std::vector<float>>& obs_list);
     /**
      * @brief
     */
@@ -190,6 +190,11 @@ public:
             float& total_cost,
             const Eigen::Vector3d& goal,
             const std::vector<std::vector<float>>& obs_list);
+    /**
+     * @brief
+    */
+    bool can_move();
+    geometry_msgs::Twist calc_cmd_vel();
     /**
      * @brief Publish candidate trajectories
      * @param trajectories Candidated trajectory
@@ -247,6 +252,7 @@ protected:
     bool USE_SCAN_AS_INPUT;
     bool USE_FOOTPRINT;
     int OBS_SEARCH_REDUCTION_RATE;
+    int SUB_COUNT_TH;
 
     ros::NodeHandle nh;
     ros::NodeHandle local_nh;
@@ -270,10 +276,14 @@ protected:
     geometry_msgs::Twist current_velocity;
     geometry_msgs::PolygonStamped base_footprint;
     bool local_goal_subscribed;
+    bool footprint_subscribed;
     bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
-    bool footprint_subscribed;
+
+    int scan_not_sub_count;
+    int local_map_not_sub_count;
+    int odom_not_sub_count;
 };
 
 #endif //__DWA_PLANNER_H
