@@ -245,9 +245,9 @@ bool DWAPlanner::can_move()
 {
     if(!local_goal_subscribed) ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
     if(!footprint_subscribed){ ROS_WARN_THROTTLE(1.0, "Robot Footprint has not been updated"); }
-    if(!scan_updated) ROS_WARN_THROTTLE(1.0, "Scan has not been updated");
-    if(!local_map_updated) ROS_WARN_THROTTLE(1.0, "Local map has not been updated");
-    if(!odom_updated) ROS_WARN_THROTTLE(1.0, "Odom has not been updated");
+    if(SUB_COUNT_TH < scan_not_sub_count) ROS_WARN_THROTTLE(1.0, "Scan has not been updated");
+    if(SUB_COUNT_TH < local_map_not_sub_count) ROS_WARN_THROTTLE(1.0, "Local map has not been updated");
+    if(SUB_COUNT_TH < odom_not_sub_count) ROS_WARN_THROTTLE(1.0, "Odom has not been updated");
 
     if(!scan_updated) scan_not_sub_count++;
     if(!local_map_updated) local_map_not_sub_count++;
@@ -393,7 +393,7 @@ geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obs
         point.y = vector_A.y() + s*(vector_B-vector_A).y();
 
         // cross
-        if(!(s < 0.0 || 1.0 < s || t < 0.0 || 1.0 < t))
+        if(!(s < 0.0 or 1.0 < s or t < 0.0 or 1.0 < t))
             return point;
 
     }
@@ -482,7 +482,7 @@ bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, c
     const Eigen::Vector3d vector_AP = vector_P - vector_A;
     const Eigen::Vector3d cross3 = vector_CA.cross(vector_AP);
 
-    if((0<cross1.z() and 0<cross2.z() and 0<cross3.z()) || (cross1.z()<0 and cross2.z()<0 and cross3.z()<0))
+    if((0<cross1.z() and 0<cross2.z() and 0<cross3.z()) or (cross1.z()<0 and cross2.z()<0 and cross3.z()<0))
         return true;
     else
         return false;
@@ -519,7 +519,7 @@ void DWAPlanner::raycast(std::vector<std::vector<float>>& obs_list)
             float y = dist * sin(angle);
             const int i = int(floor((x - local_map.info.origin.position.x) / local_map.info.resolution));
             const int j = int(floor((y - local_map.info.origin.position.y) / local_map.info.resolution));
-            if( (i < 0 || i >= local_map.info.width) || (j < 0 || j >= local_map.info.height) ){
+            if( (i < 0 or i >= local_map.info.width) or (j < 0 or j >= local_map.info.height) ){
                 break;
             }
             if(local_map.data[j*local_map.info.width + i] == 100){
