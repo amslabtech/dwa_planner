@@ -39,6 +39,10 @@ public:
     {
     public:
         /**
+         * @brief Constructor
+        */
+        State(void);
+        /**
          * @brief Constractor
          * @param x The x position of robot
          * @param y The y position of robot
@@ -126,14 +130,14 @@ public:
      * @brief Calculate difference of target velocity from estimated velocity
      * @return The difference of velocity
     */
-    float calc_speed_cost(const std::vector<State>& traj, const float target_velocity);
+    float calc_speed_cost(const std::vector<State>& traj);
     /**
      * @brief Caluclate distance from obstacle
      * @param traj Theestimated trajectory
      * @param obs_list The gird map informations which there is obstacle or not
      * @return The inverde of distance from obstacle
     */
-    float calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>&);
+    float calc_obs_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>& obs_list);
     /**
      * @brief Calculate the pose of robot 
      * @param velocity The velocity of robot
@@ -153,35 +157,39 @@ public:
     std::vector<std::vector<float>> scan_to_obs();
     /**
      * @brief
-     * @param
-     * @param
     */
     float calc_dist_from_robot(const std::vector<float>& obstacle, const State& state);
     /**
      * @brief
-     * @param
     */
     geometry_msgs::PolygonStamped transform_footprint(const State& target_pose);
     /**
      * @brief
-     * @param
-     * @param
-     * @param
     */
     bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
     /**
      * @brief
-     * @param
-     * @param
     */
     bool is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle);
     /**
      * @brief
-     * @param
-     * @param
-     * @param
     */
     geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint);
+    /**
+     * @brief
+    */
+    void generate_trajectory(std::vector<State>& trajectory, const double velocity, const double yawrate);
+    /**
+     * @brief
+    */
+    void evaluate_trajectory(
+            const std::vector<State>& trajectory,
+            float& to_goal_cost,
+            float& speed_cost,
+            float& obs_cost,
+            float& total_cost,
+            const Eigen::Vector3d& goal,
+            const std::vector<std::vector<float>>& obs_list);
     /**
      * @brief Publish candidate trajectories
      * @param trajectories Candidated trajectory
@@ -191,7 +199,13 @@ public:
      * @param trajectories_size Size of candidate trajectories
      * @param pub Publisher of candidate trajectories
     */
-    void visualize_trajectories(const std::vector<std::vector<State>>&, const double, const double, const double, const int, const ros::Publisher&);
+    void visualize_trajectories(
+            const std::vector<std::vector<State>>& trajectories,
+            const double r,
+            const double g,
+            const double b,
+            const int trajectories_size,
+            const ros::Publisher& pub);
     /**
      * @brief Publish candidate trajectory
      * @param trajectory Selected trajectry

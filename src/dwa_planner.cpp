@@ -70,6 +70,11 @@ DWAPlanner::DWAPlanner(void)
     if(USE_FOOTPRINT) footprint_subscribed = false;
 }
 
+DWAPlanner::State::State(void)
+    :x(0.0), y(0.0), yaw(0.0), velocity(0.0), yawrate(0.0)
+{
+}
+
 DWAPlanner::State::State(double _x, double _y, double _yaw, double _velocity, double _yawrate)
     :x(_x), y(_y), yaw(_yaw), velocity(_velocity), yawrate(_yawrate)
 {
@@ -140,24 +145,38 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     std::vector<State> best_traj;
 
     for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=VELOCITY_RESOLUTION){
+        ROS_WARN("search v");
         for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=YAWRATE_RESOLUTION){
-            State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
             std::vector<State> traj;
-            for(float t=0; t<=PREDICT_TIME; t+=DT){
-                motion(state, v, y);
-                traj.push_back(state);
-            }
+            generate_trajectory(traj, v, y);
             trajectories.push_back(traj);
 
-            float to_goal_cost = calc_to_goal_cost(traj, goal);
-            float speed_cost = calc_speed_cost(traj, TARGET_VELOCITY);
-            float obstacle_cost = calc_obstacle_cost(traj, obs_list);
-            float final_cost = TO_GOAL_COST_GAIN*to_goal_cost + SPEED_COST_GAIN*speed_cost + OBSTACLE_COST_GAIN*obstacle_cost;
-            if(min_cost >= final_cost){
-                min_goal_cost = TO_GOAL_COST_GAIN*to_goal_cost;
-                min_obs_cost = OBSTACLE_COST_GAIN*obstacle_cost;
-                min_speed_cost = SPEED_COST_GAIN*speed_cost;
-                min_cost = final_cost;
+            float to_goal_cost, speed_cost, obs_cost, total_cost;
+            evaluate_trajectory(traj, to_goal_cost, speed_cost, obs_cost, total_cost, goal, obs_list);
+
+            if(min_cost >= total_cost){
+                min_goal_cost = to_goal_cost;
+                min_obs_cost = obs_cost;
+                min_speed_cost = speed_cost;
+                min_cost = total_cost;
+                best_traj = traj;
+            }
+        }
+
+        if(dynamic_window.min_yawrate < 0.0 and 0.0 < dynamic_window.max_yawrate)
+        {
+            std::vector<State> traj;
+            generate_trajectory(traj, v, 0.0);
+            trajectories.push_back(traj);
+
+            float to_goal_cost, speed_cost, obs_cost, total_cost;
+            evaluate_trajectory(traj, to_goal_cost, speed_cost, obs_cost, total_cost, goal, obs_list);
+
+            if(min_cost >= total_cost){
+                min_goal_cost = to_goal_cost;
+                min_obs_cost = obs_cost;
+                min_speed_cost = speed_cost;
+                min_cost = total_cost;
                 best_traj = traj;
             }
         }
@@ -167,10 +186,11 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     ROS_INFO_STREAM("- Obs cost: " << min_obs_cost);
     ROS_INFO_STREAM("- Speed cost: " << min_speed_cost);
     ROS_INFO_STREAM("num of trajectories: " << trajectories.size());
+
     visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
     if(min_cost == 1e6){
         std::vector<State> traj;
-        State state(0.0, 0.0, 0.0, current_velocity.linear.x, current_velocity.angular.z);
+        State state(0.0, 0.0, 0.0, 0.0, 0.0);
         traj.push_back(state);
         best_traj = traj;
     }
@@ -258,6 +278,14 @@ DWAPlanner::Window DWAPlanner::calc_dynamic_window(const geometry_msgs::Twist& c
     window.max_velocity = std::min((current_velocity.linear.x + MAX_ACCELERATION*DT), MAX_VELOCITY);
     window.min_yawrate = std::max((current_velocity.angular.z - MAX_D_YAWRATE*DT), -MAX_YAWRATE);
     window.max_yawrate = std::min((current_velocity.angular.z + MAX_D_YAWRATE*DT),  MAX_YAWRATE);
+
+    ROS_WARN("==");
+    ROS_WARN_STREAM("dw.max_v: " << window.max_velocity);
+    ROS_WARN_STREAM("dw.min_v: " << window.min_velocity);
+    ROS_WARN_STREAM("dw.max_y: " << window.max_yawrate);
+    ROS_WARN_STREAM("dw.min_y: " << window.min_yawrate);
+    ROS_WARN("==");
+
     return window;
 }
 
@@ -267,13 +295,13 @@ float DWAPlanner::calc_to_goal_cost(const std::vector<State>& traj, const Eigen:
     return (last_position.segment(0, 2) - goal.segment(0, 2)).norm();
 }
 
-float DWAPlanner::calc_speed_cost(const std::vector<State>& traj, const float target_velocity)
+float DWAPlanner::calc_speed_cost(const std::vector<State>& traj)
 {
-    float cost = fabs(target_velocity - fabs(traj[traj.size()-1].velocity));
+    float cost = fabs(TARGET_VELOCITY - fabs(traj[traj.size()-1].velocity));
     return cost;
 }
 
-float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>& obs_list)
+float DWAPlanner::calc_obs_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>& obs_list)
 {
     float cost = 0.0;
     float min_dist = 1e3;
@@ -300,6 +328,32 @@ float DWAPlanner::calc_obstacle_cost(const std::vector<State>& traj, const std::
     }
     cost = 1.0 / min_dist;
     return cost;
+}
+
+void DWAPlanner::generate_trajectory(std::vector<State>& trajectory, const double velocity, const double yawrate)
+{
+        trajectory.clear();
+        State state;
+        for(float t=0; t<=PREDICT_TIME; t+=DT)
+        {
+            motion(state, velocity, yawrate);
+            trajectory.push_back(state);
+        }
+}
+
+void DWAPlanner::evaluate_trajectory(
+        const std::vector<State>& trajectory,
+        float& to_goal_cost,
+        float& speed_cost,
+        float& obs_cost,
+        float& total_cost,
+        const Eigen::Vector3d& goal,
+        const std::vector<std::vector<float>>& obs_list)
+{
+    to_goal_cost = TO_GOAL_COST_GAIN * calc_to_goal_cost(trajectory, goal);
+    speed_cost = SPEED_COST_GAIN * calc_speed_cost(trajectory);
+    obs_cost = OBSTACLE_COST_GAIN * calc_obs_cost(trajectory, obs_list);
+    total_cost = to_goal_cost + speed_cost + obs_cost;
 }
 
 geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint)
