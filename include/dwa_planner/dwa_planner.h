@@ -270,10 +270,12 @@ protected:
     geometry_msgs::Twist current_velocity;
     geometry_msgs::PolygonStamped base_footprint;
     bool local_goal_subscribed;
+    bool footprint_subscribed;
     bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
-    bool footprint_subscribed;
+    
+    int local_map_not_sub_count;
 };
 
 #endif //__DWA_PLANNER_H
