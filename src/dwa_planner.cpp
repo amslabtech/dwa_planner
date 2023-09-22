@@ -1,7 +1,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), footprint_subscribed(true)
+    :local_nh("~"), local_goal_subscribed(false), scan_updated(false), local_map_updated(false), odom_updated(false), footprint_subscribed(true), local_map_not_sub_count(0)
 {
     local_nh.param("HZ", HZ, {20});
     local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
@@ -110,6 +110,7 @@ void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr& msg)
 void DWAPlanner::local_map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
     local_map = *msg;
+    local_map_not_sub_count = 0;
     local_map_updated = true;
 }
 
@@ -201,18 +202,22 @@ void DWAPlanner::process(void)
     ros::Rate loop_rate(HZ);
 
     while(ros::ok()){
+        ROS_WARN_STREAM("local_map_not_sub_count: " << local_map_not_sub_count);
         ROS_INFO("==========================================");
         double start = ros::Time::now().toSec();
         bool input_updated = false;
+
+        if(!local_map_updated) local_map_not_sub_count++;
+
         if(USE_SCAN_AS_INPUT && scan_updated){
             input_updated = true;
-        }else if(!USE_SCAN_AS_INPUT && local_map_updated){
+        }else if(!USE_SCAN_AS_INPUT && local_map_not_sub_count < 2){
             input_updated = true;
         }
         if(input_updated && local_goal_subscribed && odom_updated && footprint_subscribed){
             Window dynamic_window = calc_dynamic_window(current_velocity);
             Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
-            ROS_INFO_STREAM("local goal: (" << goal[0] << "," << goal[1] << "," << goal[2]/M_PI*180 << ")");
+            ROS_WARN_STREAM("local goal: (" << goal[0] << " [m]," << goal[1] << " [m]," << goal[2]/M_PI*180 << " [deg])");
 
             geometry_msgs::Twist cmd_vel;
             double angle_to_goal = atan2(goal[1], goal[0]);
