@@ -159,7 +159,7 @@ public:
     /**
      * @brief
     */
-    float calc_dist_from_robot(const geometry_msgs::Pose& obstacle, const State& state);
+    float calc_dist_from_robot(const geometry_msgs::Point& obstacle, const State& state);
     /**
      * @brief
     */
@@ -167,16 +167,16 @@ public:
     /**
      * @brief
     */
-    bool is_inside_of_robot(const geometry_msgs::Pose& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
+    bool is_inside_of_robot(const geometry_msgs::Point& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
     /**
      * @brief
     */
-    bool is_inside_of_triangle(const geometry_msgs::Pose& target_point, const geometry_msgs::Polygon& triangle);
+    bool is_inside_of_triangle(const geometry_msgs::Point& target_point, const geometry_msgs::Polygon& triangle);
     /**
      * @brief
     */
     geometry_msgs::Point calc_intersection(
-            const geometry_msgs::Pose& obstacle,
+            const geometry_msgs::Point& obstacle,
             const State& state,
             geometry_msgs::PolygonStamped footprint);
     /**

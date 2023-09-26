@@ -312,7 +312,7 @@ float DWAPlanner::calc_obs_cost(const std::vector<State>& traj)
         for(const auto& obs : obs_list.poses){
             float dist;
             if(USE_FOOTPRINT)
-                dist = calc_dist_from_robot(obs, state);
+                dist = calc_dist_from_robot(obs.position, state);
             else
                 dist = hypot((state.x - obs.position.x), (state.y - obs.position.y));
 
@@ -353,13 +353,13 @@ void DWAPlanner::evaluate_trajectory(
 }
 
 geometry_msgs::Point DWAPlanner::calc_intersection(
-        const geometry_msgs::Pose& obstacle,
+        const geometry_msgs::Point& obstacle,
         const State& state,
         geometry_msgs::PolygonStamped footprint)
 {
     for (int i=0; i<footprint.polygon.points.size(); i++)
     {
-        const Eigen::Vector3d vector_A(obstacle.position.x, obstacle.position.y, 0.0);
+        const Eigen::Vector3d vector_A(obstacle.x, obstacle.y, 0.0);
         const Eigen::Vector3d vector_B(state.x, state.y, 0.0);
         const Eigen::Vector3d vector_C(footprint.polygon.points[i].x, footprint.polygon.points[i].y, 0.0);
         Eigen::Vector3d vector_D(0.0, 0.0, 0.0);
@@ -388,14 +388,14 @@ geometry_msgs::Point DWAPlanner::calc_intersection(
     return point;
 }
 
-float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Pose& obstacle, const State& state)
+float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Point& obstacle, const State& state)
 {
     const geometry_msgs::PolygonStamped footprint = transform_footprint(state);
     if(is_inside_of_robot(obstacle, footprint, state)){
         return 0.0;
     }else{
         geometry_msgs::Point intersection = calc_intersection(obstacle, state, footprint);
-        return hypot((obstacle.position.x-intersection.x),(obstacle.position.x-intersection.y));
+        return hypot((obstacle.x-intersection.x),(obstacle.x-intersection.y));
     }
 }
 
@@ -417,7 +417,7 @@ geometry_msgs::PolygonStamped DWAPlanner::transform_footprint(const State& targe
     return footprint;
 }
 
-bool DWAPlanner::is_inside_of_robot(const geometry_msgs::Pose& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state)
+bool DWAPlanner::is_inside_of_robot(const geometry_msgs::Point& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state)
 {
     geometry_msgs::Point32 state_point;
     state_point.x = state.x;
@@ -441,7 +441,7 @@ bool DWAPlanner::is_inside_of_robot(const geometry_msgs::Pose& obstacle, const g
     return false;
 }
 
-bool DWAPlanner::is_inside_of_triangle(const geometry_msgs::Pose& target_point, const geometry_msgs::Polygon& triangle)
+bool DWAPlanner::is_inside_of_triangle(const geometry_msgs::Point& target_point, const geometry_msgs::Polygon& triangle)
 {
     if(triangle.points.size() != 3)
     {
@@ -452,7 +452,7 @@ bool DWAPlanner::is_inside_of_triangle(const geometry_msgs::Pose& target_point, 
     const Eigen::Vector3d vector_A(triangle.points[0].x, triangle.points[0].y, 0.0);
     const Eigen::Vector3d vector_B(triangle.points[1].x, triangle.points[1].y, 0.0);
     const Eigen::Vector3d vector_C(triangle.points[2].x, triangle.points[2].y, 0.0);
-    const Eigen::Vector3d vector_P(target_point.position.x, target_point.position.y, 0.0);
+    const Eigen::Vector3d vector_P(target_point.x, target_point.y, 0.0);
 
     const Eigen::Vector3d vector_AB = vector_B - vector_A;
     const Eigen::Vector3d vector_BP = vector_P - vector_B;
