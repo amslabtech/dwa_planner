@@ -19,7 +19,6 @@ DWAPlanner::DWAPlanner(void):
     local_nh.param("MAX_YAWRATE", MAX_YAWRATE, {0.8});
     local_nh.param("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
     local_nh.param("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
-    local_nh.param("MAX_DIST", MAX_DIST, {10.0});
     local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
     local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
     local_nh.param("DT", DT, {0.1});
@@ -44,7 +43,6 @@ DWAPlanner::DWAPlanner(void):
     ROS_INFO_STREAM("MAX_YAWRATE: " << MAX_YAWRATE);
     ROS_INFO_STREAM("MAX_ACCELERATION: " << MAX_ACCELERATION);
     ROS_INFO_STREAM("MAX_D_YAWRATE: " << MAX_D_YAWRATE);
-    ROS_INFO_STREAM("MAX_DIST: " << MAX_DIST);
     ROS_INFO_STREAM("ANGLE_RESOLUTION: " << ANGLE_RESOLUTION);
     ROS_INFO_STREAM("PREDICT_TIME: " << PREDICT_TIME);
     ROS_INFO_STREAM("DT: " << DT);

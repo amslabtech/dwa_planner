@@ -240,7 +240,6 @@ protected:
     double MAX_YAWRATE;
     double MAX_ACCELERATION;
     double MAX_D_YAWRATE;
-    double MAX_DIST;
     double ANGLE_RESOLUTION;
     double PREDICT_TIME;
     double DT;

@@ -4,6 +4,7 @@
     <arg name="hz" default="20"/>
     <arg name="use_scan_as_input" default="false"/>
     <arg name="use_footprint" default="false"/>
+    <arg name="sub_count_th" default="3"/>
     <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
     <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
 
@@ -13,6 +14,7 @@
         <param name="HZ" value="$(arg hz)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <param name="USE_FOOTPRINT" value="$(arg use_footprint)"/>
+        <param name="SUB_COUNT_TH" value="$(arg sub_count_th)"/>
         <remap from="/local_map" to="/local_map"/>
         <remap from="/scan" to="/front_laser/scan"/>
         <remap from="/local_goal" to="/local_goal"/>
