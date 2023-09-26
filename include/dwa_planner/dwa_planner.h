@@ -204,7 +204,7 @@ public:
     /**
      * @brief
     */
-    double adjust_robot_direction(const Eigen::Vector3d& goal);
+    bool can_adjust_robot_direction(const Eigen::Vector3d& goal);
     /**
      * @brief
     */

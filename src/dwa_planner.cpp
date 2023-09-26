@@ -1,9 +1,4 @@
 #include "dwa_planner/dwa_planner.h"
-#include <algorithm>
-#include <cfloat>
-#include <cmath>
-#include <math.h>
-#include <utility>
 
 DWAPlanner::DWAPlanner(void):
     local_nh("~"),
@@ -269,17 +264,22 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 
     std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
-    double angle_to_goal = atan2(goal.y(), goal.x());
-    if(GOAL_THRESHOLD < goal.segment(0, 2).norm() and fabs(angle_to_goal) < ANGLE_TO_GOAL_TH){
-        Window dynamic_window = calc_dynamic_window(current_velocity);
-        best_traj = dwa_planning(dynamic_window, goal);
-        cmd_vel.linear.x = best_traj.front().velocity;
-        cmd_vel.angular.z = best_traj.front().yawrate;
+    if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
+        if(can_adjust_robot_direction(goal)){
+            cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
+            generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
+            std::vector<std::vector<State>> trajectories;
+            trajectories.push_back(best_traj);
+            visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
+        }else{
+            Window dynamic_window = calc_dynamic_window(current_velocity);
+            best_traj = dwa_planning(dynamic_window, goal);
+            cmd_vel.linear.x = best_traj.front().velocity;
+            cmd_vel.angular.z = best_traj.front().yawrate;
+        }
     }else{
-        if(goal.segment(0, 2).norm() <= GOAL_THRESHOLD and TURN_DIRECTION_THRESHOLD < fabs(goal[2]) or !USE_FOOTPRINT)
-            cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
-        else if(ANGLE_TO_GOAL_TH <= fabs(angle_to_goal))
-            cmd_vel.angular.z = adjust_robot_direction(goal);
+        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
+            cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
         else
             has_finished.data = true;
 
@@ -297,20 +297,18 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     return cmd_vel;
 }
 
-double DWAPlanner::adjust_robot_direction(const Eigen::Vector3d& goal)
+bool DWAPlanner::can_adjust_robot_direction(const Eigen::Vector3d& goal)
 {
-    const double max_yawrate = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
-    const double yawrate_resolution = max_yawrate / YAWRATE_SAMPLES;
-    double yawrate = 0.0;
-    for(float y=0.0; fabs(y)<=fabs(max_yawrate); y+=yawrate_resolution){
-        std::vector<State> traj;
-        generate_trajectory(traj, 0.0, y);
-        if(!check_collision(traj))
-            yawrate = y;
-        else
-            return yawrate;
-    }
-    return yawrate;
+    const double angle_to_goal = atan2(goal.y(), goal.x());
+    if(fabs(angle_to_goal) < ANGLE_TO_GOAL_TH) return false;
+
+    std::vector<State> traj;
+    const double yawrate = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
+    generate_trajectory(traj, 0.0, yawrate);
+    if(!check_collision(traj))
+        return true;
+    else
+        return false;
 }
 
 bool DWAPlanner::check_collision(const std::vector<State>& traj)
