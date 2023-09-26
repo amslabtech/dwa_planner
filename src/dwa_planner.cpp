@@ -1,4 +1,9 @@
 #include "dwa_planner/dwa_planner.h"
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <math.h>
+#include <utility>
 
 DWAPlanner::DWAPlanner(void):
     local_nh("~"),
@@ -156,9 +161,13 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
 
-    const double velocity_resolution = (dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES;
-    const double yawrate_resolution = (dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES;
+    const double velocity_resolution = std::max((dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES, DBL_EPSILON);
+    const double yawrate_resolution = std::max((dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES, DBL_EPSILON);
+    int count_v = 0;
+    int count_y = 0;
     for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=velocity_resolution){
+        count_v++;
+        ROS_WARN_STREAM("here");
         for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=yawrate_resolution){
             std::vector<State> traj;
             generate_trajectory(traj, v, y);
@@ -174,6 +183,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
                 min_cost = total_cost;
                 best_traj = traj;
             }
+            count_y++;
         }
 
         if(dynamic_window.min_yawrate < 0.0 and 0.0 < dynamic_window.max_yawrate)
@@ -194,6 +204,8 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
             }
         }
     }
+    ROS_WARN_STREAM("count_v: " << count_v);
+    ROS_WARN_STREAM("count_y: " << count_y);
     ROS_INFO("===");
     ROS_INFO_STREAM("Cost: " << min_cost);
     ROS_INFO_STREAM("\tGoal cost: " << min_goal_cost);
@@ -259,15 +271,30 @@ bool DWAPlanner::can_move()
 
 geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 {
-    Window dynamic_window = calc_dynamic_window(current_velocity);
     Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
     ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2]/M_PI*180);
 
     std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
     double angle_to_goal = atan2(goal.y(), goal.x());
-    if(GOAL_THRESHOLD < goal.segment(0, 2).norm() and (fabs(angle_to_goal) < ANGLE_TO_GOAL_TH)){
+    if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
+        Window dynamic_window = calc_dynamic_window(current_velocity);
+        if(ANGLE_TO_GOAL_TH < fabs(angle_to_goal)){
+            dynamic_window.max_velocity = 0.0;
+            dynamic_window.min_velocity = 0.0;
+        }
+        ROS_WARN_STREAM("dw.max_v: " << dynamic_window.max_velocity);
+        ROS_WARN_STREAM("dw.min_v: " << dynamic_window.min_velocity);
         best_traj = dwa_planning(dynamic_window, goal);
+
+        if(fabs(best_traj.front().velocity < DBL_EPSILON) and fabs(best_traj.front().yawrate < DBL_EPSILON)){
+            dynamic_window = calc_dynamic_window(current_velocity);
+            ROS_WARN("Replanning");
+            ROS_WARN_STREAM("dw.max_v: " << dynamic_window.max_velocity);
+            ROS_WARN_STREAM("dw.min_v: " << dynamic_window.min_velocity);
+            best_traj = dwa_planning(dynamic_window, goal);
+        }
+
         cmd_vel.linear.x = best_traj.front().velocity;
         cmd_vel.angular.z = best_traj.front().yawrate;
     }else{
