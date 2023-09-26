@@ -314,7 +314,7 @@ float DWAPlanner::calc_obs_cost(const std::vector<State>& traj)
             if(USE_FOOTPRINT)
                 dist = calc_dist_from_robot(obs, state);
             else
-                dist = sqrt((state.x - obs.position.x)*(state.x - obs.position.x) + (state.y - obs.position.y)*(state.y - obs.position.y));
+                dist = hypot((state.x - obs.position.x), (state.y - obs.position.y));
 
             if(dist < DBL_EPSILON){
                 cost = 1e6;
