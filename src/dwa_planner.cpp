@@ -395,7 +395,7 @@ float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Point& obstacle, con
         return 0.0;
     }else{
         geometry_msgs::Point intersection = calc_intersection(obstacle, state, footprint);
-        return hypot((obstacle.x-intersection.x),(obstacle.x-intersection.y));
+        return hypot((obstacle.x-intersection.x),(obstacle.y-intersection.y));
     }
 }
 
