@@ -263,23 +263,27 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
     ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2]/M_PI*180);
 
+    std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
     double angle_to_goal = atan2(goal.y(), goal.x());
     if(GOAL_THRESHOLD < goal.segment(0, 2).norm() and (fabs(angle_to_goal) < ANGLE_TO_GOAL_TH)){
-        std::vector<State> best_traj = dwa_planning(dynamic_window, goal);
+        best_traj = dwa_planning(dynamic_window, goal);
         cmd_vel.linear.x = best_traj.front().velocity;
         cmd_vel.angular.z = best_traj.front().yawrate;
-        visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
-        if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
     }else{
-        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2])){
+        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
             cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
-        }else{
-            cmd_vel.angular.z = 0.0;
+        else
             has_finished.data = true;
-        }
+
+        generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
+        std::vector<std::vector<State>> trajectories;
+        trajectories.push_back(best_traj);
+        visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
     }
 
+    visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
+    if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
     finish_flag_pub.publish(has_finished);
     has_finished.data = false;
 
