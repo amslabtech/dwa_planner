@@ -62,6 +62,7 @@ DWAPlanner::DWAPlanner(void):
     candidate_trajectories_pub = local_nh.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
     selected_trajectory_pub = local_nh.advertise<visualization_msgs::Marker>("selected_trajectory", 1);
     predict_footprint_pub = nh.advertise<geometry_msgs::PolygonStamped>("predict_footprint", 1);
+    finish_flag_pub = nh.advertise<std_msgs::Bool>("finish_flag", 1);
 
     local_goal_sub = nh.subscribe("/local_goal", 1, &DWAPlanner::local_goal_callback, this);
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
@@ -271,11 +272,16 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
         if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
     }else{
-        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
+        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2])){
             cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
-        else
+        }else{
             cmd_vel.angular.z = 0.0;
+            has_finished.data = true;
+        }
     }
+
+    finish_flag_pub.publish(has_finished);
+    has_finished.data = false;
 
     return cmd_vel;
 }

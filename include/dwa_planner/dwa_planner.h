@@ -7,7 +7,7 @@
 #define __DWA_PLANNER_H
 
 #include <ros/ros.h>
-#include <tf/tf.h>
+#include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
@@ -265,6 +265,7 @@ protected:
     ros::Publisher candidate_trajectories_pub;
     ros::Publisher selected_trajectory_pub;
     ros::Publisher predict_footprint_pub;
+    ros::Publisher finish_flag_pub;
     ros::Subscriber scan_sub;
     ros::Subscriber local_map_sub;
     ros::Subscriber local_goal_sub;
@@ -283,6 +284,8 @@ protected:
     bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
+
+    std_msgs::Bool has_finished;
 
     int scan_not_sub_count;
     int local_map_not_sub_count;
