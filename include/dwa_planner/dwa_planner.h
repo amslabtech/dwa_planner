@@ -197,6 +197,9 @@ public:
      * @brief
     */
     bool can_move();
+    /**
+     * @brief
+    */
     geometry_msgs::Twist calc_cmd_vel();
     /**
      * @brief Publish candidate trajectories
