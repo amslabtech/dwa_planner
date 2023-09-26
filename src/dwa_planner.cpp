@@ -116,14 +116,14 @@ void DWAPlanner::local_goal_callback(const geometry_msgs::PoseStampedConstPtr& m
 
 void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
-    scan = *msg;
+    if(USE_SCAN_AS_INPUT) scan_to_obs(*msg);
     scan_not_sub_count = 0;
     scan_updated = true;
 }
 
 void DWAPlanner::local_map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-    local_map = *msg;
+    if(!USE_SCAN_AS_INPUT) raycast(*msg);
     local_map_not_sub_count = 0;
     local_map_updated = true;
 }
@@ -147,10 +147,7 @@ void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
     footprint_subscribed = true;
 }
 
-std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
-        Window dynamic_window,
-        Eigen::Vector3d goal,
-        std::vector<std::vector<float>> obs_list)
+std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, Eigen::Vector3d goal)
 {
     float min_cost = 1e6;
     float min_obs_cost = min_cost;
@@ -169,7 +166,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
             trajectories.push_back(traj);
 
             float to_goal_cost, speed_cost, obs_cost, total_cost;
-            evaluate_trajectory(traj, to_goal_cost, speed_cost, obs_cost, total_cost, goal, obs_list);
+            evaluate_trajectory(traj, to_goal_cost, speed_cost, obs_cost, total_cost, goal);
 
             if(min_cost >= total_cost){
                 min_goal_cost = to_goal_cost;
@@ -187,7 +184,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
             trajectories.push_back(traj);
 
             float to_goal_cost, speed_cost, obs_cost, total_cost;
-            evaluate_trajectory(traj, to_goal_cost, speed_cost, obs_cost, total_cost, goal, obs_list);
+            evaluate_trajectory(traj, to_goal_cost, speed_cost, obs_cost, total_cost, goal);
 
             if(min_cost >= total_cost){
                 min_goal_cost = to_goal_cost;
@@ -268,18 +265,11 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2]/M_PI*180);
 
     geometry_msgs::Twist cmd_vel;
-    double angle_to_goal = atan2(goal[1], goal[0]);
+    double angle_to_goal = atan2(goal.y(), goal.x());
     if(GOAL_THRESHOLD < goal.segment(0, 2).norm() and (fabs(angle_to_goal) < ANGLE_TO_GOAL_TH)){
-        std::vector<std::vector<float>> obs_list;
-        if(USE_SCAN_AS_INPUT)
-            scan_to_obs(obs_list);
-        else
-            raycast(obs_list);
-
-        std::vector<State> best_traj = dwa_planning(dynamic_window, goal, obs_list);
-
-        cmd_vel.linear.x = best_traj[0].velocity;
-        cmd_vel.angular.z = best_traj[0].yawrate;
+        std::vector<State> best_traj = dwa_planning(dynamic_window, goal);
+        cmd_vel.linear.x = best_traj.front().velocity;
+        cmd_vel.angular.z = best_traj.front().yawrate;
         visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
         if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
     }else{
@@ -314,19 +304,19 @@ float DWAPlanner::calc_speed_cost(const std::vector<State>& traj)
     return cost;
 }
 
-float DWAPlanner::calc_obs_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>& obs_list)
+float DWAPlanner::calc_obs_cost(const std::vector<State>& traj)
 {
     float cost = 0.0;
     float min_dist = 1e3;
     for(const auto& state : traj){
-        for(const auto& obs : obs_list){
+        for(const auto& obs : obs_list.poses){
             float dist;
             if(USE_FOOTPRINT)
-                dist = calc_dist_from_robot(obs, state);
+                dist = calc_dist_from_robot(obs.position, state);
             else
-                dist = sqrt((state.x - obs[0])*(state.x - obs[0]) + (state.y - obs[1])*(state.y - obs[1]));
+                dist = hypot((state.x - obs.position.x), (state.y - obs.position.y));
 
-            if(dist <= local_map.info.resolution){
+            if(dist < DBL_EPSILON){
                 cost = 1e6;
                 return cost;
             }
@@ -354,20 +344,22 @@ void DWAPlanner::evaluate_trajectory(
         float& speed_cost,
         float& obs_cost,
         float& total_cost,
-        const Eigen::Vector3d& goal,
-        const std::vector<std::vector<float>>& obs_list)
+        const Eigen::Vector3d& goal)
 {
     to_goal_cost = TO_GOAL_COST_GAIN * calc_to_goal_cost(trajectory, goal);
     speed_cost = SPEED_COST_GAIN * calc_speed_cost(trajectory);
-    obs_cost = OBSTACLE_COST_GAIN * calc_obs_cost(trajectory, obs_list);
+    obs_cost = OBSTACLE_COST_GAIN * calc_obs_cost(trajectory);
     total_cost = to_goal_cost + speed_cost + obs_cost;
 }
 
-geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint)
+geometry_msgs::Point DWAPlanner::calc_intersection(
+        const geometry_msgs::Point& obstacle,
+        const State& state,
+        geometry_msgs::PolygonStamped footprint)
 {
     for (int i=0; i<footprint.polygon.points.size(); i++)
     {
-        const Eigen::Vector3d vector_A(obstacle[0], obstacle[1], 0.0);
+        const Eigen::Vector3d vector_A(obstacle.x, obstacle.y, 0.0);
         const Eigen::Vector3d vector_B(state.x, state.y, 0.0);
         const Eigen::Vector3d vector_C(footprint.polygon.points[i].x, footprint.polygon.points[i].y, 0.0);
         Eigen::Vector3d vector_D(0.0, 0.0, 0.0);
@@ -396,14 +388,14 @@ geometry_msgs::Point DWAPlanner::calc_intersection(const std::vector<float>& obs
     return point;
 }
 
-float DWAPlanner::calc_dist_from_robot(const std::vector<float>& obstacle, const State& state)
+float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Point& obstacle, const State& state)
 {
     const geometry_msgs::PolygonStamped footprint = transform_footprint(state);
     if(is_inside_of_robot(obstacle, footprint, state)){
         return 0.0;
     }else{
         geometry_msgs::Point intersection = calc_intersection(obstacle, state, footprint);
-        return hypot((obstacle[0]-intersection.x),(obstacle[1]-intersection.y));
+        return hypot((obstacle.x-intersection.x),(obstacle.y-intersection.y));
     }
 }
 
@@ -425,7 +417,7 @@ geometry_msgs::PolygonStamped DWAPlanner::transform_footprint(const State& targe
     return footprint;
 }
 
-bool DWAPlanner::is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state)
+bool DWAPlanner::is_inside_of_robot(const geometry_msgs::Point& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state)
 {
     geometry_msgs::Point32 state_point;
     state_point.x = state.x;
@@ -449,7 +441,7 @@ bool DWAPlanner::is_inside_of_robot(const std::vector<float>& obstacle, const ge
     return false;
 }
 
-bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle)
+bool DWAPlanner::is_inside_of_triangle(const geometry_msgs::Point& target_point, const geometry_msgs::Polygon& triangle)
 {
     if(triangle.points.size() != 3)
     {
@@ -460,7 +452,7 @@ bool DWAPlanner::is_inside_of_triangle(const std::vector<float>& target_point, c
     const Eigen::Vector3d vector_A(triangle.points[0].x, triangle.points[0].y, 0.0);
     const Eigen::Vector3d vector_B(triangle.points[1].x, triangle.points[1].y, 0.0);
     const Eigen::Vector3d vector_C(triangle.points[2].x, triangle.points[2].y, 0.0);
-    const Eigen::Vector3d vector_P(target_point[0], target_point[1], 0.0);
+    const Eigen::Vector3d vector_P(target_point.x, target_point.y, 0.0);
 
     const Eigen::Vector3d vector_AB = vector_B - vector_A;
     const Eigen::Vector3d vector_BP = vector_P - vector_B;
@@ -489,35 +481,36 @@ void DWAPlanner::motion(State& state, const double velocity, const double yawrat
     state.yawrate = yawrate;
 }
 
-void DWAPlanner::scan_to_obs(std::vector<std::vector<float>>& obs_list)
+void DWAPlanner::scan_to_obs(const sensor_msgs::LaserScan& scan)
 {
-    obs_list.clear();
+    obs_list.poses.clear();
     float angle = scan.angle_min;
     for(auto r : scan.ranges){
-        float x = r * cos(angle);
-        float y = r * sin(angle);
-        std::vector<float> obs_state = {x, y};
-        obs_list.push_back(obs_state);
+        geometry_msgs::Pose pose;
+        pose.position.x = r * cos(angle);
+        pose.position.y = r * sin(angle);
+        obs_list.poses.push_back(pose);
         angle += scan.angle_increment;
     }
 }
 
-void DWAPlanner::raycast(std::vector<std::vector<float>>& obs_list)
+void DWAPlanner::raycast(const nav_msgs::OccupancyGrid& map)
 {
-    obs_list.clear();
+    obs_list.poses.clear();
+    const double max_search_dist = hypot(map.info.origin.position.x, map.info.origin.position.y);
     for(float angle = -M_PI; angle <= M_PI; angle += ANGLE_RESOLUTION){
-        for(float dist = 0.0; dist <= MAX_DIST; dist += local_map.info.resolution){
-            float x = dist * cos(angle);
-            float y = dist * sin(angle);
-            const int i = int(floor((x - local_map.info.origin.position.x) / local_map.info.resolution));
-            const int j = int(floor((y - local_map.info.origin.position.y) / local_map.info.resolution));
-            if( (i < 0 or i >= local_map.info.width) or (j < 0 or j >= local_map.info.height) ){
-                break;
-            }
-            if(local_map.data[j*local_map.info.width + i] == 100){
-                std::vector<float> obs_state = {x, y};
-                obs_list.push_back(obs_state);
-                break;
+        for(float dist = 0.0; dist <= max_search_dist; dist += map.info.resolution){
+            geometry_msgs::Pose pose;
+            pose.position.x = dist * cos(angle);
+            pose.position.y = dist * sin(angle);
+            const int index_x = int(floor((pose.position.x - map.info.origin.position.x) / map.info.resolution));
+            const int index_y = int(floor((pose.position.y - map.info.origin.position.y) / map.info.resolution));
+
+            if((0<=index_x and index_x<map.info.width) and (0<=index_y and index_y<map.info.height)){
+                if(map.data[index_x + index_y*map.info.width] == 100){
+                    obs_list.poses.push_back(pose);
+                    break;
+                }
             }
         }
     }

@@ -10,6 +10,7 @@
 #include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
@@ -137,7 +138,7 @@ public:
      * @param obs_list The gird map informations which there is obstacle or not
      * @return The inverde of distance from obstacle
     */
-    float calc_obs_cost(const std::vector<State>& traj, const std::vector<std::vector<float>>& obs_list);
+    float calc_obs_cost(const std::vector<State>& traj);
     /**
      * @brief Calculate the pose of robot
      * @param velocity The velocity of robot
@@ -149,16 +150,16 @@ public:
      * @brief Change map coordinates to robot coordinates
      * @return The position of obstacle
     */
-    void raycast(std::vector<std::vector<float>>& obs_list);
+    void raycast(const nav_msgs::OccupancyGrid& map);
     /**
      * @brief  Calculate the position of obstacle
      * @return The position of obstacle
     */
-    void scan_to_obs(std::vector<std::vector<float>>& obs_list);
+    void scan_to_obs(const sensor_msgs::LaserScan& scan);
     /**
      * @brief
     */
-    float calc_dist_from_robot(const std::vector<float>& obstacle, const State& state);
+    float calc_dist_from_robot(const geometry_msgs::Point& obstacle, const State& state);
     /**
      * @brief
     */
@@ -166,15 +167,18 @@ public:
     /**
      * @brief
     */
-    bool is_inside_of_robot(const std::vector<float>& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
+    bool is_inside_of_robot(const geometry_msgs::Point& obstacle, const geometry_msgs::PolygonStamped& footprint, const State& state);
     /**
      * @brief
     */
-    bool is_inside_of_triangle(const std::vector<float>& target_point, const geometry_msgs::Polygon& triangle);
+    bool is_inside_of_triangle(const geometry_msgs::Point& target_point, const geometry_msgs::Polygon& triangle);
     /**
      * @brief
     */
-    geometry_msgs::Point calc_intersection(const std::vector<float>& obstacle, const State& state, geometry_msgs::PolygonStamped footprint);
+    geometry_msgs::Point calc_intersection(
+            const geometry_msgs::Point& obstacle,
+            const State& state,
+            geometry_msgs::PolygonStamped footprint);
     /**
      * @brief
     */
@@ -188,8 +192,7 @@ public:
             float& speed_cost,
             float& obs_cost,
             float& total_cost,
-            const Eigen::Vector3d& goal,
-            const std::vector<std::vector<float>>& obs_list);
+            const Eigen::Vector3d& goal);
     /**
      * @brief
     */
@@ -226,7 +229,7 @@ public:
      * @param goal Goal pose
      * @param obs_list Obstacle's position
     */
-    std::vector<State> dwa_planning(Window, Eigen::Vector3d, std::vector<std::vector<float>>);
+    std::vector<State> dwa_planning(Window dynamic_window, Eigen::Vector3d goal);
 
 protected:
     double HZ;
@@ -269,10 +272,9 @@ protected:
 
     tf::TransformListener listener;
 
-    geometry_msgs::PoseStamped local_goal;
-    sensor_msgs::LaserScan scan;
-    nav_msgs::OccupancyGrid local_map;
     geometry_msgs::Twist current_velocity;
+    geometry_msgs::PoseStamped local_goal;
+    geometry_msgs::PoseArray obs_list;
     geometry_msgs::PolygonStamped base_footprint;
     bool local_goal_subscribed;
     bool footprint_subscribed;
