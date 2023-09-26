@@ -163,11 +163,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
 
     const double velocity_resolution = std::max((dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES, DBL_EPSILON);
     const double yawrate_resolution = std::max((dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES, DBL_EPSILON);
-    int count_v = 0;
-    int count_y = 0;
     for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=velocity_resolution){
-        count_v++;
-        ROS_WARN_STREAM("here");
         for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=yawrate_resolution){
             std::vector<State> traj;
             generate_trajectory(traj, v, y);
@@ -183,7 +179,6 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
                 min_cost = total_cost;
                 best_traj = traj;
             }
-            count_y++;
         }
 
         if(dynamic_window.min_yawrate < 0.0 and 0.0 < dynamic_window.max_yawrate)
@@ -204,8 +199,6 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
             }
         }
     }
-    ROS_WARN_STREAM("count_v: " << count_v);
-    ROS_WARN_STREAM("count_y: " << count_y);
     ROS_INFO("===");
     ROS_INFO_STREAM("Cost: " << min_cost);
     ROS_INFO_STREAM("\tGoal cost: " << min_goal_cost);
@@ -277,29 +270,16 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
     double angle_to_goal = atan2(goal.y(), goal.x());
-    if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
+    if(GOAL_THRESHOLD < goal.segment(0, 2).norm() and fabs(angle_to_goal) < ANGLE_TO_GOAL_TH){
         Window dynamic_window = calc_dynamic_window(current_velocity);
-        if(ANGLE_TO_GOAL_TH < fabs(angle_to_goal)){
-            dynamic_window.max_velocity = 0.0;
-            dynamic_window.min_velocity = 0.0;
-        }
-        ROS_WARN_STREAM("dw.max_v: " << dynamic_window.max_velocity);
-        ROS_WARN_STREAM("dw.min_v: " << dynamic_window.min_velocity);
         best_traj = dwa_planning(dynamic_window, goal);
-
-        if(fabs(best_traj.front().velocity < DBL_EPSILON) and fabs(best_traj.front().yawrate < DBL_EPSILON)){
-            dynamic_window = calc_dynamic_window(current_velocity);
-            ROS_WARN("Replanning");
-            ROS_WARN_STREAM("dw.max_v: " << dynamic_window.max_velocity);
-            ROS_WARN_STREAM("dw.min_v: " << dynamic_window.min_velocity);
-            best_traj = dwa_planning(dynamic_window, goal);
-        }
-
         cmd_vel.linear.x = best_traj.front().velocity;
         cmd_vel.angular.z = best_traj.front().yawrate;
     }else{
-        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
+        if(goal.segment(0, 2).norm() <= GOAL_THRESHOLD and TURN_DIRECTION_THRESHOLD < fabs(goal[2]) or !USE_FOOTPRINT)
             cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+        else if(ANGLE_TO_GOAL_TH <= fabs(angle_to_goal))
+            cmd_vel.angular.z = adjust_robot_direction(goal);
         else
             has_finished.data = true;
 
@@ -315,6 +295,35 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     has_finished.data = false;
 
     return cmd_vel;
+}
+
+double DWAPlanner::adjust_robot_direction(const Eigen::Vector3d& goal)
+{
+    const double max_yawrate = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+    const double yawrate_resolution = max_yawrate / YAWRATE_SAMPLES;
+    double yawrate = 0.0;
+    for(float y=0.0; fabs(y)<=fabs(max_yawrate); y+=yawrate_resolution){
+        std::vector<State> traj;
+        generate_trajectory(traj, 0.0, y);
+        if(!check_collision(traj))
+            yawrate = y;
+        else
+            return yawrate;
+    }
+    return yawrate;
+}
+
+bool DWAPlanner::check_collision(const std::vector<State>& traj)
+{
+    for(const auto& state : traj){
+        for(const auto& obs : obs_list.poses){
+            const geometry_msgs::PolygonStamped footprint = transform_footprint(state);
+            if(is_inside_of_robot(obs.position, footprint, state))
+                return true;
+        }
+    }
+
+    return false;
 }
 
 DWAPlanner::Window DWAPlanner::calc_dynamic_window(const geometry_msgs::Twist& current_velocity)
