@@ -197,6 +197,9 @@ public:
      * @brief
     */
     bool can_move();
+    /**
+     * @brief
+    */
     geometry_msgs::Twist calc_cmd_vel();
     /**
      * @brief Publish candidate trajectories
@@ -240,7 +243,6 @@ protected:
     double MAX_YAWRATE;
     double MAX_ACCELERATION;
     double MAX_D_YAWRATE;
-    double MAX_DIST;
     double ANGLE_RESOLUTION;
     double PREDICT_TIME;
     double DT;
