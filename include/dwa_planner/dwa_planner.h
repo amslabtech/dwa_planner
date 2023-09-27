@@ -202,6 +202,14 @@ public:
     */
     geometry_msgs::Twist calc_cmd_vel();
     /**
+     * @brief
+    */
+    bool can_adjust_robot_direction(const Eigen::Vector3d& goal);
+    /**
+     * @brief
+    */
+    bool check_collision(const std::vector<State>& traj);
+    /**
      * @brief Publish candidate trajectories
      * @param trajectories Candidated trajectory
      * @param r Rgb color chart number of red

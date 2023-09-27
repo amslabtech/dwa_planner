@@ -156,8 +156,8 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, E
     std::vector<std::vector<State>> trajectories;
     std::vector<State> best_traj;
 
-    const double velocity_resolution = (dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES;
-    const double yawrate_resolution = (dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES;
+    const double velocity_resolution = std::max((dynamic_window.max_velocity - dynamic_window.min_velocity) / VELOCITY_SAMPLES, DBL_EPSILON);
+    const double yawrate_resolution = std::max((dynamic_window.max_yawrate - dynamic_window.min_yawrate) / YAWRATE_SAMPLES, DBL_EPSILON);
     for(float v=dynamic_window.min_velocity; v<=dynamic_window.max_velocity; v+=velocity_resolution){
         for(float y=dynamic_window.min_yawrate; y<=dynamic_window.max_yawrate; y+=yawrate_resolution){
             std::vector<State> traj;
@@ -259,20 +259,27 @@ bool DWAPlanner::can_move()
 
 geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 {
-    Window dynamic_window = calc_dynamic_window(current_velocity);
     Eigen::Vector3d goal(local_goal.pose.position.x, local_goal.pose.position.y, tf::getYaw(local_goal.pose.orientation));
     ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2]/M_PI*180);
 
     std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
-    double angle_to_goal = atan2(goal.y(), goal.x());
-    if(GOAL_THRESHOLD < goal.segment(0, 2).norm() and (fabs(angle_to_goal) < ANGLE_TO_GOAL_TH)){
-        best_traj = dwa_planning(dynamic_window, goal);
-        cmd_vel.linear.x = best_traj.front().velocity;
-        cmd_vel.angular.z = best_traj.front().yawrate;
+    if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
+        if(can_adjust_robot_direction(goal)){
+            cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
+            generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
+            std::vector<std::vector<State>> trajectories;
+            trajectories.push_back(best_traj);
+            visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub);
+        }else{
+            Window dynamic_window = calc_dynamic_window(current_velocity);
+            best_traj = dwa_planning(dynamic_window, goal);
+            cmd_vel.linear.x = best_traj.front().velocity;
+            cmd_vel.angular.z = best_traj.front().yawrate;
+        }
     }else{
         if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
-            cmd_vel.angular.z = std::min(std::max(goal(2), -MAX_YAWRATE), MAX_YAWRATE);
+            cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
         else
             has_finished.data = true;
 
@@ -288,6 +295,33 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     has_finished.data = false;
 
     return cmd_vel;
+}
+
+bool DWAPlanner::can_adjust_robot_direction(const Eigen::Vector3d& goal)
+{
+    const double angle_to_goal = atan2(goal.y(), goal.x());
+    if(fabs(angle_to_goal) < ANGLE_TO_GOAL_TH) return false;
+
+    std::vector<State> traj;
+    const double yawrate = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
+    generate_trajectory(traj, 0.0, yawrate);
+    if(!check_collision(traj))
+        return true;
+    else
+        return false;
+}
+
+bool DWAPlanner::check_collision(const std::vector<State>& traj)
+{
+    for(const auto& state : traj){
+        for(const auto& obs : obs_list.poses){
+            const geometry_msgs::PolygonStamped footprint = transform_footprint(state);
+            if(is_inside_of_robot(obs.position, footprint, state))
+                return true;
+        }
+    }
+
+    return false;
 }
 
 DWAPlanner::Window DWAPlanner::calc_dynamic_window(const geometry_msgs::Twist& current_velocity)
