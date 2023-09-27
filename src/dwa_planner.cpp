@@ -266,7 +266,8 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     geometry_msgs::Twist cmd_vel;
     if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
         if(can_adjust_robot_direction(goal)){
-            cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
+            const double angle_to_goal = atan2(goal.y(), goal.x());
+            cmd_vel.angular.z = std::min(std::max(angle_to_goal, -MAX_YAWRATE), MAX_YAWRATE);
             generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
             std::vector<std::vector<State>> trajectories;
             trajectories.push_back(best_traj);
