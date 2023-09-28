@@ -8,6 +8,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float64.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
@@ -115,6 +116,10 @@ public:
      * @brief
     */
     void footprint_callback(const geometry_msgs::PolygonStampedPtr& msg);
+    /**
+     * @brief
+    */
+    void dist_to_goal_th_callback(const std_msgs::Float64ConstPtr& msg);
     /**
      * @brief Calculate dynamic window
      * @return The dynamic window
@@ -280,6 +285,7 @@ protected:
     ros::Subscriber odom_sub;
     ros::Subscriber target_velocity_sub;
     ros::Subscriber footprint_sub;
+    ros::Subscriber dist_to_goal_th_sub;
 
     tf::TransformListener listener;
 

@@ -69,6 +69,7 @@ DWAPlanner::DWAPlanner(void):
     odom_sub = nh.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub = nh.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
     footprint_sub = nh.subscribe("/footprint", 1, &DWAPlanner::footprint_callback, this);
+    dist_to_goal_th_sub = nh.subscribe("/dist_to_goal_th", 1, &DWAPlanner::dist_to_goal_th_callback, this);
     if(USE_SCAN_AS_INPUT){
         scan_sub = nh.subscribe("/scan", 1, &DWAPlanner::scan_callback, this);
     }else{
@@ -145,6 +146,12 @@ void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr& msg)
 {
     base_footprint = *msg;
     footprint_subscribed = true;
+}
+
+void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr& msg)
+{
+    GOAL_THRESHOLD = msg->data;
+    ROS_INFO_THROTTLE(1.0, "distance to goal threshold was updated to %f [m]", GOAL_THRESHOLD);
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Window dynamic_window, Eigen::Vector3d goal)
