@@ -12,28 +12,28 @@ DWAPlanner::DWAPlanner(void):
     local_map_not_sub_count(0),
     odom_not_sub_count(0)
 {
-    local_nh.param("HZ", HZ, {20});
-    local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
-    local_nh.param("TARGET_VELOCITY", TARGET_VELOCITY, {0.8});
-    local_nh.param("MAX_VELOCITY", MAX_VELOCITY, {1.0});
-    local_nh.param("MIN_VELOCITY", MIN_VELOCITY, {0.0});
-    local_nh.param("MAX_YAWRATE", MAX_YAWRATE, {0.8});
-    local_nh.param("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
-    local_nh.param("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
-    local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
-    local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
-    local_nh.param("DT", DT, {0.1});
-    local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
-    local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
-    local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
-    local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
-    local_nh.param("USE_FOOTPRINT", USE_FOOTPRINT, {false});
-    local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
-    local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
-    local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
-    local_nh.param("SUB_COUNT_TH", SUB_COUNT_TH, {3});
-    local_nh.param("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
-    local_nh.param("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
+    local_nh.param<double>("HZ", HZ, {20});
+    local_nh.param<std::string>("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
+    local_nh.param<double>("TARGET_VELOCITY", TARGET_VELOCITY, {0.8});
+    local_nh.param<double>("MAX_VELOCITY", MAX_VELOCITY, {1.0});
+    local_nh.param<double>("MIN_VELOCITY", MIN_VELOCITY, {0.0});
+    local_nh.param<double>("MAX_YAWRATE", MAX_YAWRATE, {0.8});
+    local_nh.param<double>("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
+    local_nh.param<double>("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
+    local_nh.param<double>("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
+    local_nh.param<double>("PREDICT_TIME", PREDICT_TIME, {3.0});
+    local_nh.param<double>("DT", DT, {0.1});
+    local_nh.param<double>("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
+    local_nh.param<double>("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
+    local_nh.param<double>("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
+    local_nh.param<bool>("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
+    local_nh.param<bool>("USE_FOOTPRINT", USE_FOOTPRINT, {false});
+    local_nh.param<double>("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
+    local_nh.param<double>("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
+    local_nh.param<double>("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
+    local_nh.param<int>("SUB_COUNT_TH", SUB_COUNT_TH, {3});
+    local_nh.param<int>("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
+    local_nh.param<int>("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
 
     ROS_INFO("=== DWA Planner ===");
     ROS_INFO_STREAM("HZ: " << HZ);
