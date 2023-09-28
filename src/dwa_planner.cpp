@@ -7,32 +7,33 @@ DWAPlanner::DWAPlanner(void):
     local_map_updated(false),
     odom_updated(false),
     footprint_subscribed(false),
+    has_reached(false),
     scan_not_sub_count(0),
     local_map_not_sub_count(0),
     odom_not_sub_count(0)
 {
-    local_nh.param("HZ", HZ, {20});
-    local_nh.param("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
-    local_nh.param("TARGET_VELOCITY", TARGET_VELOCITY, {0.8});
-    local_nh.param("MAX_VELOCITY", MAX_VELOCITY, {1.0});
-    local_nh.param("MIN_VELOCITY", MIN_VELOCITY, {0.0});
-    local_nh.param("MAX_YAWRATE", MAX_YAWRATE, {0.8});
-    local_nh.param("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
-    local_nh.param("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
-    local_nh.param("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
-    local_nh.param("PREDICT_TIME", PREDICT_TIME, {3.0});
-    local_nh.param("DT", DT, {0.1});
-    local_nh.param("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
-    local_nh.param("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
-    local_nh.param("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
-    local_nh.param("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
-    local_nh.param("USE_FOOTPRINT", USE_FOOTPRINT, {false});
-    local_nh.param("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
-    local_nh.param("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
-    local_nh.param("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
-    local_nh.param("SUB_COUNT_TH", SUB_COUNT_TH, {3});
-    local_nh.param("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
-    local_nh.param("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
+    local_nh.param<double>("HZ", HZ, {20});
+    local_nh.param<std::string>("ROBOT_FRAME", ROBOT_FRAME, {"base_link"});
+    local_nh.param<double>("TARGET_VELOCITY", TARGET_VELOCITY, {0.8});
+    local_nh.param<double>("MAX_VELOCITY", MAX_VELOCITY, {1.0});
+    local_nh.param<double>("MIN_VELOCITY", MIN_VELOCITY, {0.0});
+    local_nh.param<double>("MAX_YAWRATE", MAX_YAWRATE, {0.8});
+    local_nh.param<double>("MAX_ACCELERATION", MAX_ACCELERATION, {1.0});
+    local_nh.param<double>("MAX_D_YAWRATE", MAX_D_YAWRATE, {2.0});
+    local_nh.param<double>("ANGLE_RESOLUTION", ANGLE_RESOLUTION, {0.2});
+    local_nh.param<double>("PREDICT_TIME", PREDICT_TIME, {3.0});
+    local_nh.param<double>("DT", DT, {0.1});
+    local_nh.param<double>("TO_GOAL_COST_GAIN", TO_GOAL_COST_GAIN, {1.0});
+    local_nh.param<double>("SPEED_COST_GAIN", SPEED_COST_GAIN, {1.0});
+    local_nh.param<double>("OBSTACLE_COST_GAIN", OBSTACLE_COST_GAIN, {1.0});
+    local_nh.param<bool>("USE_SCAN_AS_INPUT", USE_SCAN_AS_INPUT, {false});
+    local_nh.param<bool>("USE_FOOTPRINT", USE_FOOTPRINT, {false});
+    local_nh.param<double>("GOAL_THRESHOLD", GOAL_THRESHOLD, {0.3});
+    local_nh.param<double>("TURN_DIRECTION_THRESHOLD", TURN_DIRECTION_THRESHOLD, {1.0});
+    local_nh.param<double>("ANGLE_TO_GOAL_TH", ANGLE_TO_GOAL_TH, {M_PI});
+    local_nh.param<int>("SUB_COUNT_TH", SUB_COUNT_TH, {3});
+    local_nh.param<int>("VELOCITY_SAMPLES", VELOCITY_SAMPLES, {3});
+    local_nh.param<int>("YAWRATE_SAMPLES", YAWRATE_SAMPLES, {20});
 
     ROS_INFO("=== DWA Planner ===");
     ROS_INFO_STREAM("HZ: " << HZ);
@@ -224,12 +225,15 @@ void DWAPlanner::process(void)
         geometry_msgs::Twist cmd_vel;
         if(can_move()) cmd_vel = calc_cmd_vel();
         velocity_pub.publish(cmd_vel);
+        finish_flag_pub.publish(has_finished);
 
         if (USE_SCAN_AS_INPUT)
             scan_updated = false;
         else
             local_map_updated = false;
         odom_updated = false;
+        has_finished.data = false;
+
         ros::spinOnce();
         loop_rate.sleep();
     }
@@ -264,10 +268,11 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 
     std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
-    if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
+    if(GOAL_THRESHOLD < goal.segment(0, 2).norm() or has_reached){
         if(can_adjust_robot_direction(goal)){
             const double angle_to_goal = atan2(goal.y(), goal.x());
             cmd_vel.angular.z = std::min(std::max(angle_to_goal, -MAX_YAWRATE), MAX_YAWRATE);
+
             generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
             std::vector<std::vector<State>> trajectories;
             trajectories.push_back(best_traj);
@@ -279,10 +284,13 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
             cmd_vel.angular.z = best_traj.front().yawrate;
         }
     }else{
-        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
+        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2])){
             cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
-        else
+            has_reached = true;
+        }else{
             has_finished.data = true;
+            has_reached = false;
+        }
 
         generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
         std::vector<std::vector<State>> trajectories;
@@ -292,8 +300,6 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 
     visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
     if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
-    finish_flag_pub.publish(has_finished);
-    has_finished.data = false;
 
     return cmd_vel;
 }
