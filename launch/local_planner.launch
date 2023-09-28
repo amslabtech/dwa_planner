@@ -21,5 +21,6 @@
         <remap from="/cmd_vel" to="/local_path/cmd_vel"/>
         <remap from="/odom" to="/odom"/>
         <remap from="/footprint" to="/footprint"/>
+        <remap from="/target_velocity" to="/target_velocity"/>
     </node>
 </launch>
