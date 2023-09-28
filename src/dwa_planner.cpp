@@ -7,6 +7,7 @@ DWAPlanner::DWAPlanner(void):
     local_map_updated(false),
     odom_updated(false),
     footprint_subscribed(false),
+    has_reached(false),
     scan_not_sub_count(0),
     local_map_not_sub_count(0),
     odom_not_sub_count(0)
@@ -264,7 +265,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 
     std::vector<State> best_traj;
     geometry_msgs::Twist cmd_vel;
-    if(GOAL_THRESHOLD < goal.segment(0, 2).norm()){
+    if(GOAL_THRESHOLD < goal.segment(0, 2).norm() or has_reached){
         if(can_adjust_robot_direction(goal)){
             const double angle_to_goal = atan2(goal.y(), goal.x());
             cmd_vel.angular.z = std::min(std::max(angle_to_goal, -MAX_YAWRATE), MAX_YAWRATE);
@@ -279,10 +280,13 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
             cmd_vel.angular.z = best_traj.front().yawrate;
         }
     }else{
-        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2]))
+        if(TURN_DIRECTION_THRESHOLD < fabs(goal[2])){
             cmd_vel.angular.z = std::min(std::max(goal[2], -MAX_YAWRATE), MAX_YAWRATE);
-        else
+            has_reached = true;
+        }else{
             has_finished.data = true;
+            has_reached = false;
+        }
 
         generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
         std::vector<std::vector<State>> trajectories;

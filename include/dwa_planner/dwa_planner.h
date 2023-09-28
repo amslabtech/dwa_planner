@@ -292,6 +292,7 @@ protected:
     bool scan_updated;
     bool local_map_updated;
     bool odom_updated;
+    bool has_reached;
 
     std_msgs::Bool has_finished;
 
