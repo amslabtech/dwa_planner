@@ -225,12 +225,15 @@ void DWAPlanner::process(void)
         geometry_msgs::Twist cmd_vel;
         if(can_move()) cmd_vel = calc_cmd_vel();
         velocity_pub.publish(cmd_vel);
+        finish_flag_pub.publish(has_finished);
 
         if (USE_SCAN_AS_INPUT)
             scan_updated = false;
         else
             local_map_updated = false;
         odom_updated = false;
+        has_finished.data = false;
+
         ros::spinOnce();
         loop_rate.sleep();
     }
@@ -269,6 +272,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         if(can_adjust_robot_direction(goal)){
             const double angle_to_goal = atan2(goal.y(), goal.x());
             cmd_vel.angular.z = std::min(std::max(angle_to_goal, -MAX_YAWRATE), MAX_YAWRATE);
+
             generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
             std::vector<std::vector<State>> trajectories;
             trajectories.push_back(best_traj);
@@ -296,8 +300,6 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 
     visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub);
     if(USE_FOOTPRINT) predict_footprint_pub.publish(transform_footprint(best_traj.back()));
-    finish_flag_pub.publish(has_finished);
-    has_finished.data = false;
 
     return cmd_vel;
 }
