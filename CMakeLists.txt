@@ -213,10 +213,10 @@ target_link_libraries(dwa_planner
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 if(CATKIN_ENABLE_TESTING)
+    find_package(rostest REQUIRED)
     find_package(roslint REQUIRED)
     roslint_cpp()
     roslint_add_test()
-    find_package(rostest REQUIRED)
 endif()
 
 ## Add folders to be run by python nosetests
