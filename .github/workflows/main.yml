@@ -1,23 +1,24 @@
-name: CI
+name: ci
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ros_distro: [noetic]
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-
-      - name: build Dockerfile
-        run: |
-          docker build -t ${{github.repository}}:${{matrix.ros_distro}} -f Dockerfile . --build-arg ros_distro=${{matrix.ros_distro}}
-      - name: catkin_make with running tests
-        run: |
-          docker run --rm ${{github.repository}}:${{matrix.ros_distro}} bash -c "catkin_make run_tests && catkin_test_results"
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup ROS
+        uses: ros-tooling/setup-ros@v0.6
+        with:
+          required-ros-distributions: noetic
+      - name: Build
+        uses: ros-tooling/action-ros-ci@v0.3
+        with:
+          target-ros1-distro: noetic
