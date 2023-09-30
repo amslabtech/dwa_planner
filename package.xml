@@ -16,6 +16,8 @@
   <depend>visualization_msgs</depend>
   <depend>tf</depend>
   <depend>eigen</depend>
+  <test_depend>rostest</test_depend>
+  <test_depend>roslint</test_depend>
 
   <export>
   </export>
