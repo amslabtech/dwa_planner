@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "dwa_planner/dwa_planner.h"
@@ -200,7 +201,7 @@ void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg)
 
 std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
         const Eigen::Vector3d &goal,
-        std::vector<std::vector<State>> &trajectories)
+        std::vector<std::pair<std::vector<State>, bool>> &trajectories)
 {
     Cost min_cost(0.0, 0.0, 0.0, 1e6);
     Window dynamic_window = calc_dynamic_window();
@@ -217,26 +218,36 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
     {
         for (float y = dynamic_window.min_yawrate_; y <= dynamic_window.max_yawrate_; y += yawrate_resolution)
         {
-            std::vector<State> traj = generate_trajectory(v, y);
-            trajectories.push_back(traj);
-            Cost cost = evaluate_trajectory(traj, goal);
+            std::pair<std::vector<State>, bool> traj;
+            traj.first = generate_trajectory(v, y);
+            Cost cost = evaluate_trajectory(traj.first, goal);
             if (cost.total_cost_ <= min_cost.total_cost_)
             {
                 min_cost = cost;
-                best_traj = traj;
+                best_traj = traj.first;
             }
+            if (cost.obs_cost_ == 1e6)
+                traj.second = false;
+            else
+                traj.second = true;
+            trajectories.push_back(traj);
         }
 
         if (dynamic_window.min_yawrate_ < 0.0 && 0.0 < dynamic_window.max_yawrate_)
         {
-            std::vector<State> traj = generate_trajectory(v, 0.0);
-            trajectories.push_back(traj);
-            Cost cost = evaluate_trajectory(traj, goal);
+            std::pair<std::vector<State>, bool> traj;
+            traj.first = generate_trajectory(v, 0.0);
+            Cost cost = evaluate_trajectory(traj.first, goal);
             if (cost.total_cost_ <= min_cost.total_cost_)
             {
                 min_cost = cost;
-                best_traj = traj;
+                best_traj = traj.first;
             }
+            if (cost.obs_cost_ == 1e6)
+                traj.second = false;
+            else
+                traj.second = true;
+            trajectories.push_back(traj);
         }
     }
     ROS_INFO("===");
@@ -300,8 +311,8 @@ bool DWAPlanner::can_move(void)
 geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 {
     geometry_msgs::Twist cmd_vel;
-    std::vector<State> best_traj;
-    std::vector<std::vector<State>> trajectories;
+    std::pair<std::vector<State>, bool> best_traj;
+    std::vector<std::pair<std::vector<State>, bool>> trajectories;
     const size_t trajectories_size = (velocity_samples_ + 1) * (yawrate_samples_ + 1);
     trajectories.reserve(trajectories_size);
 
@@ -317,14 +328,14 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         {
             const double angle_to_goal = atan2(goal.y(), goal.x());
             cmd_vel.angular.z = std::min(std::max(angle_to_goal, -max_yawrate_), max_yawrate_);
-            best_traj = generate_trajectory(cmd_vel.angular.z, goal);
+            best_traj.first = generate_trajectory(cmd_vel.angular.z, goal);
             trajectories.push_back(best_traj);
         }
         else
         {
-            best_traj = dwa_planning(goal, trajectories);
-            cmd_vel.linear.x = best_traj.front().velocity_;
-            cmd_vel.angular.z = best_traj.front().yawrate_;
+            best_traj.first = dwa_planning(goal, trajectories);
+            cmd_vel.linear.x = best_traj.first.front().velocity_;
+            cmd_vel.angular.z = best_traj.first.front().yawrate_;
         }
     }
     else
@@ -339,13 +350,13 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
             has_finished_.data = true;
             has_reached_ = false;
         }
-        best_traj = generate_trajectory(cmd_vel.linear.x, cmd_vel.angular.z);
+        best_traj.first = generate_trajectory(cmd_vel.linear.x, cmd_vel.angular.z);
         trajectories.push_back(best_traj);
     }
 
-    visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub_);
+    visualize_trajectory(best_traj.first, 1, 0, 0, selected_trajectory_pub_);
     visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub_);
-    if (use_footprint_) predict_footprint_pub_.publish(transform_footprint(best_traj.back()));
+    if (use_footprint_) predict_footprint_pub_.publish(transform_footprint(best_traj.first.back()));
 
     return cmd_vel;
 }
@@ -661,12 +672,12 @@ void DWAPlanner::raycast(const nav_msgs::OccupancyGrid &map)
 
 
 void DWAPlanner::visualize_trajectories(
-    const std::vector<std::vector<State>> &trajectories,
-    const double r,
-    const double g,
-    const double b,
-    const int trajectories_size,
-    const ros::Publisher &pub)
+        const std::vector<std::pair<std::vector<State>, bool>> &trajectories,
+        const double r,
+        const double g,
+        const double b,
+        const int trajectories_size,
+        const ros::Publisher &pub)
 {
     visualization_msgs::MarkerArray v_trajectories;
     int count = 0;
@@ -676,9 +687,18 @@ void DWAPlanner::visualize_trajectories(
         visualization_msgs::Marker v_trajectory;
         v_trajectory.header.frame_id = robot_frame_;
         v_trajectory.header.stamp = ros::Time::now();
-        v_trajectory.color.r = r;
-        v_trajectory.color.g = g;
-        v_trajectory.color.b = b;
+        if (trajectories[count].second)
+        {
+            v_trajectory.color.r = r;
+            v_trajectory.color.g = g;
+            v_trajectory.color.b = b;
+        }
+        else
+        {
+            v_trajectory.color.r = 0.5;
+            v_trajectory.color.g = 0.0;
+            v_trajectory.color.b = 0.5;
+        }
         v_trajectory.color.a = 0.8;
         v_trajectory.ns = pub.getTopic();
         v_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
@@ -690,7 +710,7 @@ void DWAPlanner::visualize_trajectories(
         pose.orientation.w = 1;
         v_trajectory.pose = pose;
         geometry_msgs::Point p;
-        for (const auto &pose : trajectories[count])
+        for (const auto &pose : trajectories[count].first)
         {
             p.x = pose.x_;
             p.y = pose.y_;

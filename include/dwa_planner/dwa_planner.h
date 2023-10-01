@@ -22,6 +22,7 @@
 #include <string>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
+#include <utility>
 #include <vector>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -268,7 +269,7 @@ public:
      * @param pub Publisher of candidate trajectories
      */
     void visualize_trajectories(
-            const std::vector<std::vector<State>> &trajectories,
+            const std::vector<std::pair<std::vector<State>, bool>> &trajectories,
             const double r,
             const double g,
             const double b,
@@ -283,18 +284,20 @@ public:
      * @param pub Publisher of candidate trajectory
      */
     void visualize_trajectory(
-        const std::vector<State> &trajectory,
-        const double r,
-        const double g,
-        const double b,
-        const ros::Publisher &pub);
+            const std::vector<State> &trajectory,
+            const double r,
+            const double g,
+            const double b,
+            const ros::Publisher &pub);
     /**
      * @brief Execut dwa planner
      * @param window Dynamic window
      * @param goal Goal pose
      * @param obs_list Obstacle's position
      */
-    std::vector<State> dwa_planning(const Eigen::Vector3d &goal, std::vector<std::vector<State>> &trajectories);
+    std::vector<State> dwa_planning(
+            const Eigen::Vector3d &goal,
+            std::vector<std::pair<std::vector<State>, bool>> &trajectories);
 
 protected:
     std::string robot_frame_;
