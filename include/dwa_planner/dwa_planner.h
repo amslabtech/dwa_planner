@@ -205,6 +205,10 @@ public:
     /**
      * @brief
      */
+    void generate_trajectory(std::vector<State>& trajectory, const double yawrate, const Eigen::Vector3d& goal);
+    /**
+     * @brief
+     */
     void evaluate_trajectory(
             const std::vector<State> &trajectory,
             float &to_goal_cost,
