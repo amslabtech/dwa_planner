@@ -7,7 +7,7 @@
 
 ![demo_dwa](doc/demo_dwa.gif)
 
-## Enviornment
+## Environment
 - Ubuntu 20.04
 - ROS Noetic
 
@@ -31,7 +31,7 @@ catkin build --this
   - max velocity of robot's target velocity (default: 0.8[m/s])
 - ROBOT_FRAME
   - robot's coordinate frame (default: base_link)
-  
+
 #### Runtime requirement
 - TF (from LocalMap_FRAME to ROBOT_FRAME) is required
 
