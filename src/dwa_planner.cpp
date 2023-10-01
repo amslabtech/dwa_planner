@@ -198,14 +198,15 @@ void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg)
 }
 
 
-std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Eigen::Vector3d goal)
+std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(
+        const Eigen::Vector3d &goal,
+        std::vector<std::vector<State>> &trajectories)
 {
-    Cost min_cost;
-    min_cost.total_cost_ = 1e6;
-
+    Cost min_cost(0.0, 0.0, 0.0, 1e6);
     Window dynamic_window = calc_dynamic_window();
-    std::vector<std::vector<State>> trajectories;
+    const size_t trajectory_size = predict_time_ / dt_;
     std::vector<State> best_traj;
+    best_traj.resize(trajectory_size);
 
     const double velocity_resolution =
         std::max((dynamic_window.max_velocity_ - dynamic_window.min_velocity_) / velocity_samples_, DBL_EPSILON);
@@ -216,13 +217,10 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Eigen::Vector3d goal)
     {
         for (float y = dynamic_window.min_yawrate_; y <= dynamic_window.max_yawrate_; y += yawrate_resolution)
         {
-            std::vector<State> traj;
-            generate_trajectory(traj, v, y);
+            std::vector<State> traj = generate_trajectory(v, y);
             trajectories.push_back(traj);
-
             Cost cost = evaluate_trajectory(traj, goal);
-
-            if (min_cost.total_cost_ >= cost.total_cost_)
+            if (cost.total_cost_ <= min_cost.total_cost_)
             {
                 min_cost = cost;
                 best_traj = traj;
@@ -231,13 +229,10 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Eigen::Vector3d goal)
 
         if (dynamic_window.min_yawrate_ < 0.0 && 0.0 < dynamic_window.max_yawrate_)
         {
-            std::vector<State> traj;
-            generate_trajectory(traj, v, 0.0);
+            std::vector<State> traj = generate_trajectory(v, 0.0);
             trajectories.push_back(traj);
-
             Cost cost = evaluate_trajectory(traj, goal);
-
-            if (min_cost.total_cost_ >= cost.total_cost_)
+            if (cost.total_cost_ <= min_cost.total_cost_)
             {
                 min_cost = cost;
                 best_traj = traj;
@@ -250,14 +245,7 @@ std::vector<DWAPlanner::State> DWAPlanner::dwa_planning(Eigen::Vector3d goal)
     ROS_INFO(" ");
 
     if (min_cost.total_cost_ == 1e6)
-    {
-        generate_trajectory(best_traj, 0.0, 0.0);
-        visualize_trajectories(trajectories, 0.5, 0, 0.5, 1000, candidate_trajectories_pub_);
-    }
-    else
-    {
-        visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub_);
-    }
+        best_traj = generate_trajectory(0.0, 0.0);
 
     return best_traj;
 }
@@ -311,29 +299,30 @@ bool DWAPlanner::can_move(void)
 
 geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 {
-    Eigen::Vector3d goal(
+    geometry_msgs::Twist cmd_vel;
+    std::vector<State> best_traj;
+    std::vector<std::vector<State>> trajectories;
+    const size_t trajectories_size = (velocity_samples_ + 1) * (yawrate_samples_ + 1);
+    trajectories.reserve(trajectories_size);
+
+    const Eigen::Vector3d goal(
             local_goal_.pose.position.x,
             local_goal_.pose.position.y,
             tf::getYaw(local_goal_.pose.orientation));
     ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2] / M_PI * 180);
 
-    std::vector<State> best_traj;
-    geometry_msgs::Twist cmd_vel;
     if (dist_to_goal_th_ < goal.segment(0, 2).norm() || has_reached_)
     {
         if (can_adjust_robot_direction(goal))
         {
             const double angle_to_goal = atan2(goal.y(), goal.x());
             cmd_vel.angular.z = std::min(std::max(angle_to_goal, -max_yawrate_), max_yawrate_);
-
-            generate_trajectory(best_traj, cmd_vel.angular.z, goal);
-            std::vector<std::vector<State>> trajectories;
+            best_traj = generate_trajectory(cmd_vel.angular.z, goal);
             trajectories.push_back(best_traj);
-            visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub_);
         }
         else
         {
-            best_traj = dwa_planning(goal);
+            best_traj = dwa_planning(goal, trajectories);
             cmd_vel.linear.x = best_traj.front().velocity_;
             cmd_vel.angular.z = best_traj.front().yawrate_;
         }
@@ -350,14 +339,12 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
             has_finished_.data = true;
             has_reached_ = false;
         }
-
-        generate_trajectory(best_traj, cmd_vel.linear.x, cmd_vel.angular.z);
-        std::vector<std::vector<State>> trajectories;
+        best_traj = generate_trajectory(cmd_vel.linear.x, cmd_vel.angular.z);
         trajectories.push_back(best_traj);
-        visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub_);
     }
 
     visualize_trajectory(best_traj, 1, 0, 0, selected_trajectory_pub_);
+    visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub_);
     if (use_footprint_) predict_footprint_pub_.publish(transform_footprint(best_traj.back()));
 
     return cmd_vel;
@@ -370,8 +357,7 @@ bool DWAPlanner::can_adjust_robot_direction(const Eigen::Vector3d &goal)
     if (fabs(angle_to_goal) < angle_to_goal_th_) return false;
 
     const double yawrate = std::min(std::max(angle_to_goal, -max_yawrate_), max_yawrate_);
-    std::vector<State> traj;
-    generate_trajectory(traj, yawrate, goal);
+    std::vector<State> traj = generate_trajectory(yawrate, goal);
 
     if (!check_collision(traj))
         return true;
@@ -447,29 +433,35 @@ float DWAPlanner::calc_obs_cost(const std::vector<State> &traj)
 }
 
 
-void DWAPlanner::generate_trajectory(std::vector<State> &trajectory, const double velocity, const double yawrate)
+std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double velocity, const double yawrate)
 {
-    trajectory.clear();
+    const size_t trajectory_size = predict_time_ / dt_;
+    std::vector<State> trajectory;
+    trajectory.resize(trajectory_size);
     State state;
-    for (float t = 0; t <= predict_time_; t += dt_)
+    for (int i = 0; i < trajectory_size; i++)
     {
         motion(state, velocity, yawrate);
-        trajectory.push_back(state);
+        trajectory[i] = state;
     }
+    return trajectory;
 }
 
 
-void DWAPlanner::generate_trajectory(std::vector<State>& trajectory, const double yawrate, const Eigen::Vector3d& goal)
+std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double yawrate, const Eigen::Vector3d& goal)
 {
-    trajectory.clear();
-    State state;
     const double angle_to_goal = atan2(goal.y(), goal.x());
     const double predict_time = angle_to_goal / yawrate;
-    for (float t = 0; t <= predict_time; t += dt_)
+    const size_t trajectory_size = predict_time / dt_;
+    std::vector<State> trajectory;
+    trajectory.resize(trajectory_size);
+    State state;
+    for (int i = 0; i < trajectory_size; i++)
     {
         motion(state, 0.0, yawrate);
-        trajectory.push_back(state);
+        trajectory[i] = state;
     }
+    return trajectory;
 }
 
 
