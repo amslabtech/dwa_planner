@@ -233,11 +233,11 @@ public:
     /**
      * @brief
      */
-    void generate_trajectory(std::vector<State> &trajectory, const double velocity, const double yawrate);
+    std::vector<State> generate_trajectory(const double velocity, const double yawrate);
     /**
      * @brief
      */
-    void generate_trajectory(std::vector<State>& trajectory, const double yawrate, const Eigen::Vector3d& goal);
+    std::vector<State> generate_trajectory(const double yawrate, const Eigen::Vector3d& goal);
     /**
      * @brief
      */
@@ -294,7 +294,7 @@ public:
      * @param goal Goal pose
      * @param obs_list Obstacle's position
      */
-    std::vector<State> dwa_planning(Eigen::Vector3d goal);
+    std::vector<State> dwa_planning(const Eigen::Vector3d &goal, std::vector<std::vector<State>> &trajectories);
 
 protected:
     std::string robot_frame_;
