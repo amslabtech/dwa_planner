@@ -100,6 +100,38 @@ public:
     };
 
     /**
+     * @brief
+     */
+    class Cost
+    {
+    public:
+        /**
+         * @brief
+         */
+        Cost(void);
+        /**
+         * @brief Constructor
+         * @param
+         */
+        Cost(const float to_goal_cost, const float obs_cost, const float speed_cost, const float total_cost);
+        /**
+         * @brief
+         */
+        void show(void);
+        /**
+         * @brief
+         */
+        void calc_total_cost(void);
+
+        float to_goal_cost_;
+        float obs_cost_;
+        float speed_cost_;
+        float total_cost_;
+
+    private:
+    };
+
+    /**
      * @brief Calculate local path plan
      */
     void process(void);
@@ -209,13 +241,7 @@ public:
     /**
      * @brief
      */
-    void evaluate_trajectory(
-            const std::vector<State> &trajectory,
-            float &to_goal_cost,
-            float &speed_cost,
-            float &obs_cost,
-            float &total_cost,
-            const Eigen::Vector3d &goal);
+    Cost evaluate_trajectory(const std::vector<State> &trajectory, const Eigen::Vector3d &goal);
     /**
      * @brief
      */
