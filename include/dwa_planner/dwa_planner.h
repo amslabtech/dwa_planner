@@ -269,7 +269,7 @@ public:
      * @param pub Publisher of candidate trajectories
      */
     void visualize_trajectories(
-            std::vector<std::pair<std::vector<State>, bool>> &trajectories,
+            const std::vector<std::pair<std::vector<State>, bool>> &trajectories,
             const double r,
             const double g,
             const double b,

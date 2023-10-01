@@ -672,7 +672,7 @@ void DWAPlanner::raycast(const nav_msgs::OccupancyGrid &map)
 
 
 void DWAPlanner::visualize_trajectories(
-        std::vector<std::pair<std::vector<State>, bool>> &trajectories,
+        const std::vector<std::pair<std::vector<State>, bool>> &trajectories,
         const double r,
         const double g,
         const double b,
