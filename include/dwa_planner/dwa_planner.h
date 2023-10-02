@@ -87,10 +87,7 @@ public:
          * @param max_yawrate The maximum angular velocity of robot
          */
         Window(
-                const double min_velocity,
-                const double max_velocity,
-                const double min_yawrate,
-                const double max_yawrate);
+            const double min_velocity, const double max_velocity, const double min_yawrate, const double max_yawrate);
 
         double min_velocity_;
         double max_velocity_;
@@ -217,9 +214,7 @@ public:
      * @brief
      */
     bool is_inside_of_robot(
-            const geometry_msgs::Point &obstacle,
-            const geometry_msgs::PolygonStamped &footprint,
-            const State &state);
+        const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint, const State &state);
     /**
      * @brief
      */
@@ -228,9 +223,7 @@ public:
      * @brief
      */
     geometry_msgs::Point calc_intersection(
-            const geometry_msgs::Point &obstacle,
-            const State &state,
-            geometry_msgs::PolygonStamped footprint);
+        const geometry_msgs::Point &obstacle, const State &state, geometry_msgs::PolygonStamped footprint);
     /**
      * @brief
      */
@@ -238,7 +231,7 @@ public:
     /**
      * @brief
      */
-    std::vector<State> generate_trajectory(const double yawrate, const Eigen::Vector3d& goal);
+    std::vector<State> generate_trajectory(const double yawrate, const Eigen::Vector3d &goal);
     /**
      * @brief
      */
@@ -269,12 +262,8 @@ public:
      * @param pub Publisher of candidate trajectories
      */
     void visualize_trajectories(
-            const std::vector<std::pair<std::vector<State>, bool>> &trajectories,
-            const double r,
-            const double g,
-            const double b,
-            const int trajectories_size,
-            const ros::Publisher &pub);
+        const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const double r, const double g,
+        const double b, const int trajectories_size, const ros::Publisher &pub);
     /**
      * @brief Publish candidate trajectory
      * @param trajectory Selected trajectry
@@ -284,20 +273,16 @@ public:
      * @param pub Publisher of candidate trajectory
      */
     void visualize_trajectory(
-            const std::vector<State> &trajectory,
-            const double r,
-            const double g,
-            const double b,
-            const ros::Publisher &pub);
+        const std::vector<State> &trajectory, const double r, const double g, const double b,
+        const ros::Publisher &pub);
     /**
      * @brief Execut dwa planner
      * @param window Dynamic window
      * @param goal Goal pose
      * @param obs_list Obstacle's position
      */
-    std::vector<State> dwa_planning(
-            const Eigen::Vector3d &goal,
-            std::vector<std::pair<std::vector<State>, bool>> &trajectories);
+    std::vector<State>
+    dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std::vector<State>, bool>> &trajectories);
 
 protected:
     std::string robot_frame_;
