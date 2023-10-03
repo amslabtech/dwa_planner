@@ -153,7 +153,7 @@ void DWAPlanner::odom_callback(const nav_msgs::OdometryConstPtr &msg)
 
 void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr &msg)
 {
-    target_velocity_ = msg->linear.x;
+    target_velocity_ = std::min(msg->linear.x, max_velocity_);
     ROS_INFO_THROTTLE(1.0, "target velocity was updated to %f [m/s]", target_velocity_);
 }
 
@@ -366,7 +366,7 @@ DWAPlanner::Window DWAPlanner::calc_dynamic_window(void)
 {
     Window window(min_velocity_, max_velocity_, -max_yawrate_, max_yawrate_);
     window.min_velocity_ = std::max((current_cmd_vel_.linear.x - max_acceleration_ * dt_), min_velocity_);
-    window.max_velocity_ = std::min((current_cmd_vel_.linear.x + max_acceleration_ * dt_), max_velocity_);
+    window.max_velocity_ = std::min((current_cmd_vel_.linear.x + max_acceleration_ * dt_), target_velocity_);
     window.min_yawrate_ = std::max((current_cmd_vel_.angular.z - max_d_yawrate_ * dt_), -max_yawrate_);
     window.max_yawrate_ = std::min((current_cmd_vel_.angular.z + max_d_yawrate_ * dt_), max_yawrate_);
     return window;
