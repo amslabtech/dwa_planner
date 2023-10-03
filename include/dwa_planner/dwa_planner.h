@@ -253,6 +253,10 @@ public:
      */
     bool check_collision(const std::vector<State> &traj);
     /**
+     * @brief
+     */
+    void normalize_costs(std::vector<Cost> &costs);
+    /**
      * @brief Publish candidate trajectories
      * @param trajectories Candidated trajectory
      * @param r Rgb color chart number of red
@@ -302,6 +306,7 @@ protected:
     double dist_to_goal_th_;
     double turn_direction_th_;
     double angle_to_goal_th_;
+    double obs_range_;
     bool use_footprint_;
     bool use_scan_as_input_;
     bool footprint_subscribed_;
