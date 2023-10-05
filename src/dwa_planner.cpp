@@ -350,7 +350,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     const Eigen::Vector3d goal(
         local_goal_.pose.position.x, local_goal_.pose.position.y, tf::getYaw(local_goal_.pose.orientation));
 
-    if (dist_to_goal_th_ < goal.segment(0, 2).norm() || has_reached_)
+    if (dist_to_goal_th_ < goal.segment(0, 2).norm() && !has_reached_)
     {
         if (can_adjust_robot_direction(goal))
         {
@@ -368,10 +368,10 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     }
     else
     {
+        has_reached_ = true;
         if (turn_direction_th_ < fabs(goal[2]))
         {
             cmd_vel.angular.z = std::min(std::max(goal[2], -max_yawrate_), max_yawrate_);
-            has_reached_ = true;
         }
         else
         {
