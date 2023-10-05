@@ -349,7 +349,6 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
 
     const Eigen::Vector3d goal(
         local_goal_.pose.position.x, local_goal_.pose.position.y, tf::getYaw(local_goal_.pose.orientation));
-    ROS_INFO_THROTTLE(1.0, "local goal: (%lf [m], %lf [m], %lf [deg])", goal[0], goal[1], goal[2] / M_PI * 180);
 
     if (dist_to_goal_th_ < goal.segment(0, 2).norm() || has_reached_)
     {
