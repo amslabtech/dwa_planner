@@ -8,7 +8,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    : local_nh_("~"), footprint_subscribed_(false), local_goal_subscribed_(false), odom_updated_(false),
+    : local_nh_("~"), footprint_subscribed_(false), goal_subscribed_(false), odom_updated_(false),
       local_map_updated_(false), scan_updated_(false), has_reached_(false), odom_not_subscribe_count_(0),
       local_map_not_subscribe_count_(0), scan_not_subscribe_count_(0)
 {
@@ -65,7 +65,7 @@ DWAPlanner::DWAPlanner(void)
     predict_footprint_pub_ = local_nh_.advertise<geometry_msgs::PolygonStamped>("predict_footprint", 1);
     finish_flag_pub_ = local_nh_.advertise<std_msgs::Bool>("finish_flag", 1);
 
-    local_goal_sub_ = nh_.subscribe("/local_goal", 1, &DWAPlanner::local_goal_callback, this);
+    goal_sub_ = nh_.subscribe("/local_goal", 1, &DWAPlanner::goal_callback, this);
     odom_sub_ = nh_.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     target_velocity_sub_ = nh_.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
     footprint_sub_ = nh_.subscribe("/footprint", 1, &DWAPlanner::footprint_callback, this);
@@ -113,13 +113,13 @@ void DWAPlanner::Cost::show(void)
 
 void DWAPlanner::Cost::calc_total_cost(void) { total_cost_ = to_goal_cost_ + obs_cost_; }
 
-void DWAPlanner::local_goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
+void DWAPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
 {
-    local_goal_ = *msg;
+    goal_ = *msg;
     try
     {
-        listener_.transformPose(robot_frame_, ros::Time(0), local_goal_, local_goal_.header.frame_id, local_goal_);
-        local_goal_subscribed_ = true;
+        listener_.transformPose(robot_frame_, ros::Time(0), goal_, goal_.header.frame_id, goal_);
+        goal_subscribed_ = true;
     }
     catch (tf::TransformException ex)
     {
@@ -308,7 +308,7 @@ bool DWAPlanner::can_move(void)
 {
     if (!footprint_subscribed_)
         ROS_WARN_THROTTLE(1.0, "Robot Footprint has not been updated");
-    if (!local_goal_subscribed_)
+    if (!goal_subscribed_)
         ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
     if (subscribe_count_th_ < odom_not_subscribe_count_)
         ROS_WARN_THROTTLE(1.0, "Odom has not been updated");
@@ -324,7 +324,7 @@ bool DWAPlanner::can_move(void)
     if (!scan_updated_)
         scan_not_subscribe_count_++;
 
-    if (footprint_subscribed_ && local_goal_subscribed_ && odom_not_subscribe_count_ <= subscribe_count_th_ &&
+    if (footprint_subscribed_ && goal_subscribed_ && odom_not_subscribe_count_ <= subscribe_count_th_ &&
         local_map_not_subscribe_count_ <= subscribe_count_th_ && scan_not_subscribe_count_ <= subscribe_count_th_)
         return true;
     else
@@ -339,8 +339,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     const size_t trajectories_size = (velocity_samples_ + 1) * (yawrate_samples_ + 1);
     trajectories.reserve(trajectories_size);
 
-    const Eigen::Vector3d goal(
-        local_goal_.pose.position.x, local_goal_.pose.position.y, tf::getYaw(local_goal_.pose.orientation));
+    const Eigen::Vector3d goal(goal_.pose.position.x, goal_.pose.position.y, tf::getYaw(goal_.pose.orientation));
 
     if (dist_to_goal_th_ < goal.segment(0, 2).norm() && !has_reached_)
     {
