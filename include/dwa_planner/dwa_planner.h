@@ -111,7 +111,7 @@ public:
          * @brief Constructor
          * @param
          */
-        Cost(const float to_goal_cost, const float obs_cost, const float speed_cost, const float total_cost);
+        Cost(const float obs_cost, const float to_goal_cost, const float total_cost);
         /**
          * @brief
          */
@@ -121,9 +121,8 @@ public:
          */
         void calc_total_cost(void);
 
-        float to_goal_cost_;
         float obs_cost_;
-        float speed_cost_;
+        float to_goal_cost_;
         float total_cost_;
 
     private:
@@ -134,9 +133,9 @@ public:
      */
     void process(void);
     /**
-     * @brief A callback to hanldle buffering locacl goal messages
+     * @brief A callback to hanldle buffering local goal messages
      */
-    void local_goal_callback(const geometry_msgs::PoseStampedConstPtr &msg);
+    void goal_callback(const geometry_msgs::PoseStampedConstPtr &msg);
     /**
      * @brief A callback to hanldle buffering scan messages
      */
@@ -173,11 +172,6 @@ public:
      * @return The distance of current pose to goal pose
      */
     float calc_to_goal_cost(const std::vector<State> &traj, const Eigen::Vector3d &goal);
-    /**
-     * @brief Calculate difference of target velocity from estimated velocity
-     * @return The difference of velocity
-     */
-    float calc_speed_cost(const std::vector<State> &traj);
     /**
      * @brief Caluclate distance from obstacle
      * @param traj Theestimated trajectory
@@ -301,7 +295,6 @@ protected:
     double predict_time_;
     double dt_;
     double to_goal_cost_gain_;
-    double speed_cost_gain_;
     double obs_cost_gain_;
     double dist_to_goal_th_;
     double turn_direction_th_;
@@ -310,7 +303,7 @@ protected:
     bool use_footprint_;
     bool use_scan_as_input_;
     bool footprint_subscribed_;
-    bool local_goal_subscribed_;
+    bool goal_subscribed_;
     bool odom_updated_;
     bool local_map_updated_;
     bool scan_updated_;
@@ -331,14 +324,14 @@ protected:
     ros::Publisher finish_flag_pub_;
     ros::Subscriber scan_sub_;
     ros::Subscriber local_map_sub_;
-    ros::Subscriber local_goal_sub_;
+    ros::Subscriber goal_sub_;
     ros::Subscriber odom_sub_;
     ros::Subscriber target_velocity_sub_;
     ros::Subscriber footprint_sub_;
     ros::Subscriber dist_to_goal_th_sub_;
 
     geometry_msgs::Twist current_cmd_vel_;
-    geometry_msgs::PoseStamped local_goal_;
+    geometry_msgs::PoseStamped goal_;
     geometry_msgs::PoseArray obs_list_;
     geometry_msgs::PolygonStamped footprint_;
 
