@@ -177,7 +177,7 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
     std::vector<State> best_traj;
     best_traj.resize(trajectory_size);
     std::vector<Cost> costs;
-    const size_t costs_size = (velocity_samples_ + 1) * (yawrate_samples_ + 1);
+    const size_t costs_size = velocity_samples_ * (yawrate_samples_ + 1);
     costs.reserve(costs_size);
 
     const double velocity_resolution =
@@ -186,11 +186,13 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
         std::max((dynamic_window.max_yawrate_ - dynamic_window.min_yawrate_) / yawrate_samples_, DBL_EPSILON);
 
     int available_traj_count = 0;
-    for (float v = dynamic_window.min_velocity_; v <= dynamic_window.max_velocity_; v += velocity_resolution)
+    for (int i = 0; i < velocity_samples_; i++)
     {
-        for (float y = dynamic_window.min_yawrate_; y <= dynamic_window.max_yawrate_; y += yawrate_resolution)
+        const double v = dynamic_window.min_velocity_ + velocity_resolution * i;
+        for (int j = 0; j < yawrate_samples_; j++)
         {
             std::pair<std::vector<State>, bool> traj;
+            const double y = dynamic_window.min_yawrate_ + yawrate_resolution * j;
             traj.first = generate_trajectory(v, y);
             Cost cost = evaluate_trajectory(traj.first, goal);
             costs.push_back(cost);
@@ -336,7 +338,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     geometry_msgs::Twist cmd_vel;
     std::pair<std::vector<State>, bool> best_traj;
     std::vector<std::pair<std::vector<State>, bool>> trajectories;
-    const size_t trajectories_size = (velocity_samples_ + 1) * (yawrate_samples_ + 1);
+    const size_t trajectories_size = velocity_samples_ * (yawrate_samples_ + 1);
     trajectories.reserve(trajectories_size);
 
     const Eigen::Vector3d goal(goal_.pose.position.x, goal_.pose.position.y, tf::getYaw(goal_.pose.orientation));
