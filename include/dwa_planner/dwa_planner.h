@@ -15,6 +15,7 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Bool.h>
@@ -111,7 +112,7 @@ public:
          * @brief Constructor
          * @param
          */
-        Cost(const float obs_cost, const float to_goal_cost, const float total_cost);
+        Cost(const float obs_cost, const float to_goal_cost, const float path_cost, const float total_cost);
         /**
          * @brief
          */
@@ -123,6 +124,7 @@ public:
 
         float obs_cost_;
         float to_goal_cost_;
+        float path_cost_;
         float total_cost_;
 
     private:
@@ -161,6 +163,10 @@ public:
      */
     void dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg);
     /**
+     * @brief
+     */
+    void edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg);
+    /**
      * @brief Calculate dynamic window
      * @return The dynamic window
      */
@@ -179,6 +185,14 @@ public:
      * @return The inverde of distance from obstacle
      */
     float calc_obs_cost(const std::vector<State> &traj);
+    /**
+     * @brief
+     */
+    float calc_path_cost(const std::vector<State> &traj);
+    /**
+     * @brief
+     */
+    float calc_dist_to_path(const State state);
     /**
      * @brief Calculate the pose of robot
      * @param velocity The velocity of robot
@@ -296,14 +310,17 @@ protected:
     double dt_;
     double to_goal_cost_gain_;
     double obs_cost_gain_;
+    double path_cost_gain_;
     double dist_to_goal_th_;
     double turn_direction_th_;
     double angle_to_goal_th_;
     double obs_range_;
     bool use_footprint_;
     bool use_scan_as_input_;
+    bool use_path_cost_;
     bool footprint_subscribed_;
     bool goal_subscribed_;
+    bool edge_on_global_path_subscribed_;
     bool odom_updated_;
     bool local_map_updated_;
     bool scan_updated_;
@@ -322,18 +339,20 @@ protected:
     ros::Publisher selected_trajectory_pub_;
     ros::Publisher predict_footprint_pub_;
     ros::Publisher finish_flag_pub_;
-    ros::Subscriber scan_sub_;
-    ros::Subscriber local_map_sub_;
-    ros::Subscriber goal_sub_;
-    ros::Subscriber odom_sub_;
-    ros::Subscriber target_velocity_sub_;
-    ros::Subscriber footprint_sub_;
     ros::Subscriber dist_to_goal_th_sub_;
+    ros::Subscriber edge_on_global_path_sub_;
+    ros::Subscriber footprint_sub_;
+    ros::Subscriber goal_sub_;
+    ros::Subscriber local_map_sub_;
+    ros::Subscriber odom_sub_;
+    ros::Subscriber scan_sub_;
+    ros::Subscriber target_velocity_sub_;
 
     geometry_msgs::Twist current_cmd_vel_;
     geometry_msgs::PoseStamped goal_;
     geometry_msgs::PoseArray obs_list_;
     geometry_msgs::PolygonStamped footprint_;
+    std::vector<geometry_msgs::PoseStamped> edge_point_on_path_;
 
     std_msgs::Bool has_finished_;
 
