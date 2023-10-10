@@ -172,19 +172,19 @@ public:
      */
     Window calc_dynamic_window(void);
     /**
-     * @brief Calculate the distance of current pose to goal pose
-     * @param traj The estimated trajectory
-     * @param goal The pose of goal
-     * @return The distance of current pose to goal pose
-     */
-    float calc_to_goal_cost(const std::vector<State> &traj, const Eigen::Vector3d &goal);
-    /**
      * @brief Caluclate distance from obstacle
      * @param traj Theestimated trajectory
      * @param obs_list The gird map informations which there is obstacle or not
      * @return The inverde of distance from obstacle
      */
     float calc_obs_cost(const std::vector<State> &traj);
+    /**
+     * @brief Calculate the distance of current pose to goal pose
+     * @param traj The estimated trajectory
+     * @param goal The pose of goal
+     * @return The distance of current pose to goal pose
+     */
+    float calc_to_goal_cost(const std::vector<State> &traj, const Eigen::Vector3d &goal);
     /**
      * @brief
      */
@@ -308,8 +308,8 @@ protected:
     double angle_resolution_;
     double predict_time_;
     double dt_;
-    double to_goal_cost_gain_;
     double obs_cost_gain_;
+    double to_goal_cost_gain_;
     double path_cost_gain_;
     double dist_to_goal_th_;
     double turn_direction_th_;
