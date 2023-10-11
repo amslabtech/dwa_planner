@@ -32,8 +32,9 @@ catkin build --this
   - If /footprint is used, set `use_footprint` to true
 - /path
   - for path cost
-  - Default evaluation is not use path cost
+  - Default evaluation does not use path cost
   - If path cost is used, set `use_path_cost` to true
+    - Give a part of the global path (edge)
 
 #### Parameters
 - HZ
