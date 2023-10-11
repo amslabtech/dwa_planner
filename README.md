@@ -23,12 +23,24 @@ catkin build --this
 ## Node I/O
 
 ![dwa_planner I/O diagram](doc/images/dwa_planner_io.png)
+### Optional Topics
+- /scan
+  - Default input is /local_map
+  - If /scan is used, set `use_scan_as_input` to true
+- /footprint
+  - robot footprint
+  - If /footprint is used, set `use_footprint` to true
+- /path
+  - for path cost
+  - Default evaluation does not use path cost
+  - If path cost is used, set `use_path_cost` to true
+    - Give a part of the global path (edge)
 
 #### Parameters
 - HZ
   - main loop rate (default: 20[Hz])
 - TARGET_VELOCITY
-  - max velocity of robot's target velocity (default: 0.8[m/s])
+  - max velocity of robot's target velocity (default: 0.55[m/s])
 - ROBOT_FRAME
   - robot's coordinate frame (default: base_link)
 
