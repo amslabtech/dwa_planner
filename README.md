@@ -36,7 +36,7 @@ catkin build --this
   - If path cost is used, set `use_path_cost` to true
     - Give a part of the global path (edge)
 
-#### Parameters
+### Parameters
 - HZ
   - main loop rate (default: 20[Hz])
 - TARGET_VELOCITY
@@ -44,7 +44,7 @@ catkin build --this
 - ROBOT_FRAME
   - robot's coordinate frame (default: base_link)
 
-#### Runtime requirement
+### Runtime requirement
 - TF (from LocalMap_FRAME to ROBOT_FRAME) is required
 
 ## How to Use
