@@ -288,8 +288,6 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
 void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
 {
     Cost min_cost(1e6, 1e6, 1e6, 1e6), max_cost;
-    if (!use_path_cost_)
-        max_cost.path_cost_ = 0.0;
 
     for (const auto &cost : costs)
     {
