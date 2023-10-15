@@ -30,6 +30,7 @@ catkin build --this
 - /footprint
   - robot footprint
   - If /footprint is used, set `use_footprint` to true
+  - `footprint_publisher` node in `amsl_navigation_utils` repository publishes rectangular footprint
 - /path
   - for path cost
   - Default evaluation does not use path cost
