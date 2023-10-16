@@ -18,7 +18,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("MAX_VELOCITY", max_velocity_, {1.0});
     local_nh_.param<double>("MIN_VELOCITY", min_velocity_, {0.0});
     local_nh_.param<double>("MAX_YAWRATE", max_yawrate_, {1.0});
-    local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {1.0});
+    local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {0.5});
     local_nh_.param<double>("MAX_DECELERATION", max_deceleration_, {1.0});
     local_nh_.param<double>("MAX_D_YAWRATE", max_d_yawrate_, {3.2});
     local_nh_.param<double>("ANGLE_RESOLUTION", angle_resolution_, {0.087});
