@@ -18,7 +18,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("MAX_VELOCITY", max_velocity_, {1.0});
     local_nh_.param<double>("MIN_VELOCITY", min_velocity_, {0.0});
     local_nh_.param<double>("MAX_YAWRATE", max_yawrate_, {1.0});
-    local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {1.0});
+    local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {0.5});
+    local_nh_.param<double>("MAX_DECELERATION", max_deceleration_, {1.0});
     local_nh_.param<double>("MAX_D_YAWRATE", max_d_yawrate_, {3.2});
     local_nh_.param<double>("ANGLE_RESOLUTION", angle_resolution_, {0.087});
     local_nh_.param<double>("PREDICT_TIME", predict_time_, {3.0});
@@ -45,6 +46,7 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("MIN_VELOCITY: " << min_velocity_);
     ROS_INFO_STREAM("MAX_YAWRATE: " << max_yawrate_);
     ROS_INFO_STREAM("MAX_ACCELERATION: " << max_acceleration_);
+    ROS_INFO_STREAM("MAX_DECELERATION: " << max_deceleration_);
     ROS_INFO_STREAM("MAX_D_YAWRATE: " << max_d_yawrate_);
     ROS_INFO_STREAM("ANGLE_RESOLUTION: " << angle_resolution_);
     ROS_INFO_STREAM("PREDICT_TIME: " << predict_time_);
@@ -454,7 +456,7 @@ bool DWAPlanner::check_collision(const std::vector<State> &traj)
 DWAPlanner::Window DWAPlanner::calc_dynamic_window(void)
 {
     Window window(min_velocity_, max_velocity_, -max_yawrate_, max_yawrate_);
-    window.min_velocity_ = std::max((current_cmd_vel_.linear.x - max_acceleration_ * dt_), min_velocity_);
+    window.min_velocity_ = std::max((current_cmd_vel_.linear.x - max_deceleration_ * dt_), min_velocity_);
     window.max_velocity_ = std::min((current_cmd_vel_.linear.x + max_acceleration_ * dt_), target_velocity_);
     window.min_yawrate_ = std::max((current_cmd_vel_.angular.z - max_d_yawrate_ * dt_), -max_yawrate_);
     window.max_yawrate_ = std::min((current_cmd_vel_.angular.z + max_d_yawrate_ * dt_), max_yawrate_);
