@@ -68,7 +68,7 @@ DWAPlanner::DWAPlanner(void)
     velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub_ = local_nh_.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
     selected_trajectory_pub_ = local_nh_.advertise<visualization_msgs::Marker>("selected_trajectory", 1);
-    predict_footprint_pub_ = local_nh_.advertise<geometry_msgs::PolygonStamped>("predict_footprint", 1);
+    predict_footprints_pub_ = local_nh_.advertise<visualization_msgs::MarkerArray>("predict_footprints", 1);
     finish_flag_pub_ = local_nh_.advertise<std_msgs::Bool>("finish_flag", 1);
 
     dist_to_goal_th_sub_ = nh_.subscribe("/dist_to_goal_th", 1, &DWAPlanner::dist_to_goal_th_callback, this);
@@ -416,9 +416,9 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     }
 
     visualize_trajectory(best_traj.first, 1, 0, 0, selected_trajectory_pub_);
-    visualize_trajectories(trajectories, 0, 1, 0, 1000, candidate_trajectories_pub_);
+    visualize_trajectories(trajectories, 0, 1, 0, candidate_trajectories_pub_);
     if (use_footprint_)
-        predict_footprint_pub_.publish(transform_footprint(best_traj.first.back()));
+        visualize_footprints(best_traj.first, 0, 0, 1, predict_footprints_pub_);
 
     return cmd_vel;
 }
@@ -723,12 +723,10 @@ void DWAPlanner::raycast(const nav_msgs::OccupancyGrid &map)
 
 void DWAPlanner::visualize_trajectories(
     const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const double r, const double g,
-    const double b, const int trajectories_size, const ros::Publisher &pub)
+    const double b, const ros::Publisher &pub)
 {
     visualization_msgs::MarkerArray v_trajectories;
-    int count = 0;
-    const int size = trajectories.size();
-    for (; count < size; count++)
+    for (int count = 0; count < trajectories.size(); count++)
     {
         visualization_msgs::Marker v_trajectory;
         v_trajectory.header.frame_id = robot_frame_;
@@ -764,18 +762,6 @@ void DWAPlanner::visualize_trajectories(
         }
         v_trajectories.markers.push_back(v_trajectory);
     }
-    for (; count < trajectories_size; count++)
-    {
-        visualization_msgs::Marker v_trajectory;
-        v_trajectory.header.frame_id = robot_frame_;
-        v_trajectory.header.stamp = ros::Time::now();
-        v_trajectory.ns = pub.getTopic();
-        v_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
-        v_trajectory.action = visualization_msgs::Marker::DELETE;
-        v_trajectory.lifetime = ros::Duration();
-        v_trajectory.id = count;
-        v_trajectories.markers.push_back(v_trajectory);
-    }
     pub.publish(v_trajectories);
 }
 
@@ -805,4 +791,42 @@ void DWAPlanner::visualize_trajectory(
         v_trajectory.points.push_back(p);
     }
     pub.publish(v_trajectory);
+}
+
+void DWAPlanner::visualize_footprints(
+    const std::vector<State> &trajectory, const double r, const double g, const double b, const ros::Publisher &pub)
+{
+    visualization_msgs::MarkerArray v_footprints;
+    for (int i = 0; i < trajectory.size(); i++)
+    {
+        visualization_msgs::Marker v_footprint;
+        v_footprint.header.frame_id = robot_frame_;
+        v_footprint.header.stamp = ros::Time::now();
+        v_footprint.color.r = r;
+        v_footprint.color.g = g;
+        v_footprint.color.b = b;
+        v_footprint.color.a = 0.8;
+        v_footprint.ns = pub.getTopic();
+        v_footprint.type = visualization_msgs::Marker::LINE_STRIP;
+        v_footprint.action = visualization_msgs::Marker::ADD;
+        v_footprint.lifetime = ros::Duration();
+        v_footprint.id = i;
+        v_footprint.scale.x = 0.01;
+        geometry_msgs::Pose pose;
+        pose.orientation.w = 1;
+        v_footprint.pose = pose;
+        geometry_msgs::Point p;
+        const geometry_msgs::PolygonStamped footprint = transform_footprint(trajectory[i]);
+        for (const auto &point : footprint.polygon.points)
+        {
+            p.x = point.x;
+            p.y = point.y;
+            v_footprint.points.push_back(p);
+        }
+        p.x = footprint.polygon.points.front().x;
+        p.y = footprint.polygon.points.front().y;
+        v_footprint.points.push_back(p);
+        v_footprints.markers.push_back(v_footprint);
+    }
+    pub.publish(v_footprints);
 }
