@@ -68,7 +68,7 @@ DWAPlanner::DWAPlanner(void)
     velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     candidate_trajectories_pub_ = local_nh_.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
     selected_trajectory_pub_ = local_nh_.advertise<visualization_msgs::Marker>("selected_trajectory", 1);
-    predict_footprints_pub_ = local_nh_.advertise<visualization_msgs::MarkerArray>("predict_footprint", 1);
+    predict_footprints_pub_ = local_nh_.advertise<visualization_msgs::MarkerArray>("predict_footprints", 1);
     finish_flag_pub_ = local_nh_.advertise<std_msgs::Bool>("finish_flag", 1);
 
     dist_to_goal_th_sub_ = nh_.subscribe("/dist_to_goal_th", 1, &DWAPlanner::dist_to_goal_th_callback, this);
