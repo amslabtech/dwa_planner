@@ -266,25 +266,35 @@ public:
     void normalize_costs(std::vector<Cost> &costs);
     /**
      * @brief Publish candidate trajectories
-     * @param trajectories Candidated trajectory
+     * @param trajectories Candidated trajectories
      * @param r Rgb color chart number of red
      * @param g Rgb color chart number of green
      * @param b Rgb color chart number of blue
-     * @param trajectories_size Size of candidate trajectories
      * @param pub Publisher of candidate trajectories
      */
     void visualize_trajectories(
         const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const double r, const double g,
-        const double b, const int trajectories_size, const ros::Publisher &pub);
+        const double b, const ros::Publisher &pub);
     /**
-     * @brief Publish candidate trajectory
+     * @brief Publish selected trajectory
      * @param trajectory Selected trajectry
      * @param r Rgb color chart number of red
      * @param g Rgb color chart number of green
      * @param b Rgb color chart number of blue
-     * @param pub Publisher of candidate trajectory
+     * @param pub Publisher of selected trajectory
      */
     void visualize_trajectory(
+        const std::vector<State> &trajectory, const double r, const double g, const double b,
+        const ros::Publisher &pub);
+    /**
+     * @brief Publish predicted footprints
+     * @param trajectory Selected trajectry
+     * @param r Rgb color chart number of red
+     * @param g Rgb color chart number of green
+     * @param b Rgb color chart number of blue
+     * @param pub Publisher of predicted footprints
+     */
+    void visualize_footprints(
         const std::vector<State> &trajectory, const double r, const double g, const double b,
         const ros::Publisher &pub);
     /**
@@ -338,7 +348,7 @@ protected:
     ros::Publisher velocity_pub_;
     ros::Publisher candidate_trajectories_pub_;
     ros::Publisher selected_trajectory_pub_;
-    ros::Publisher predict_footprint_pub_;
+    ros::Publisher predict_footprints_pub_;
     ros::Publisher finish_flag_pub_;
     ros::Subscriber dist_to_goal_th_sub_;
     ros::Subscriber edge_on_global_path_sub_;
