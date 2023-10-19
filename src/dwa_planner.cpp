@@ -311,11 +311,13 @@ void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
     {
         if (cost.obs_cost_ != 1e6)
         {
-            cost.obs_cost_ = (cost.obs_cost_ - min_cost.obs_cost_) / (max_cost.obs_cost_ - min_cost.obs_cost_);
-            cost.to_goal_cost_ =
-                (cost.to_goal_cost_ - min_cost.to_goal_cost_) / (max_cost.to_goal_cost_ - min_cost.to_goal_cost_);
+            cost.obs_cost_ =
+                (cost.obs_cost_ - min_cost.obs_cost_) / (max_cost.obs_cost_ - min_cost.obs_cost_ + DBL_EPSILON);
+            cost.to_goal_cost_ = (cost.to_goal_cost_ - min_cost.to_goal_cost_) /
+                                 (max_cost.to_goal_cost_ - min_cost.to_goal_cost_ + DBL_EPSILON);
             if (use_path_cost_)
-                cost.path_cost_ = (cost.path_cost_ - min_cost.path_cost_) / (max_cost.path_cost_ - min_cost.path_cost_);
+                cost.path_cost_ =
+                    (cost.path_cost_ - min_cost.path_cost_) / (max_cost.path_cost_ - min_cost.path_cost_ + DBL_EPSILON);
         }
     }
 }
@@ -506,7 +508,7 @@ float DWAPlanner::calc_dist_to_path(const State state)
     const float b = -(edge_point2.x - edge_point1.x);
     const float c = -a * edge_point1.x - b * edge_point1.y;
 
-    return fabs(a * state.x_ + b * state.y_ + c) / hypot(a, b);
+    return fabs(a * state.x_ + b * state.y_ + c) / (hypot(a, b) + DBL_EPSILON);
 }
 
 std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double velocity, const double yawrate)
@@ -526,7 +528,7 @@ std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double velo
 std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double yawrate, const Eigen::Vector3d &goal)
 {
     const double angle_to_goal = atan2(goal.y(), goal.x());
-    const double predict_time = angle_to_goal / yawrate;
+    const double predict_time = angle_to_goal / (yawrate + DBL_EPSILON);
     const size_t trajectory_size = predict_time / dt_;
     std::vector<State> trajectory;
     trajectory.resize(trajectory_size);
