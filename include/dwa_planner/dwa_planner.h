@@ -313,6 +313,7 @@ protected:
     double max_velocity_;
     double min_velocity_;
     double max_yawrate_;
+    double min_in_place_yawrate_;
     double max_acceleration_;
     double max_deceleration_;
     double max_d_yawrate_;

@@ -18,6 +18,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("MAX_VELOCITY", max_velocity_, {1.0});
     local_nh_.param<double>("MIN_VELOCITY", min_velocity_, {0.0});
     local_nh_.param<double>("MAX_YAWRATE", max_yawrate_, {1.0});
+    local_nh_.param<double>("MIN_IN_PLACE_YAWRATE", min_in_place_yawrate_, {0.3});
     local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {0.5});
     local_nh_.param<double>("MAX_DECELERATION", max_deceleration_, {1.0});
     local_nh_.param<double>("MAX_D_YAWRATE", max_d_yawrate_, {3.2});
@@ -390,7 +391,10 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         if (can_adjust_robot_direction(goal))
         {
             const double angle_to_goal = atan2(goal.y(), goal.x());
-            cmd_vel.angular.z = std::min(std::max(angle_to_goal, -max_yawrate_), max_yawrate_);
+            cmd_vel.angular.z =
+                angle_to_goal > 0 ? std::min(angle_to_goal, max_yawrate_) : std::max(angle_to_goal, -max_yawrate_);
+            cmd_vel.angular.z = cmd_vel.angular.z > 0 ? std::max(cmd_vel.angular.z, min_in_place_yawrate_)
+                                                      : std::min(cmd_vel.angular.z, -min_in_place_yawrate_);
             best_traj.first = generate_trajectory(cmd_vel.angular.z, goal);
             trajectories.push_back(best_traj);
         }
@@ -406,7 +410,9 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         has_reached_ = true;
         if (turn_direction_th_ < fabs(goal[2]))
         {
-            cmd_vel.angular.z = std::min(std::max(goal[2], -max_yawrate_), max_yawrate_);
+            cmd_vel.angular.z = goal[2] > 0 ? std::min(goal[2], max_yawrate_) : std::max(goal[2], -max_yawrate_);
+            cmd_vel.angular.z = cmd_vel.angular.z > 0 ? std::max(cmd_vel.angular.z, min_in_place_yawrate_)
+                                                      : std::min(cmd_vel.angular.z, -min_in_place_yawrate_);
         }
         else
         {
