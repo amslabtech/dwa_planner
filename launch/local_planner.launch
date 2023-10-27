@@ -6,7 +6,7 @@
     <!-- param -->
     <arg name="hz" default="20"/>
     <arg name="subscribe_count_th" default="3"/>
-    <arg name="sleep_time_for_finish" default="0.5"/>
+    <arg name="sleep_time_after_finish" default="0.5"/>
     <arg name="use_scan_as_input" default="false"/>
     <arg name="use_footprint" default="false"/>
     <arg name="use_path_cost" default="false"/>
@@ -33,7 +33,7 @@
         <param name="USE_FOOTPRINT" value="$(arg use_footprint)"/>
         <param name="USE_PATH_COST" value="$(arg use_path_cost)"/>
         <param name="SUBSCRIBE_COUNT_TH" value="$(arg subscribe_count_th)"/>
-        <param name="SLEEP_TIME_FOR_FINISH" value="$(arg sleep_time_for_finish)"/>
+        <param name="SLEEP_TIME_AFTER_FINISH" value="$(arg sleep_time_after_finish)"/>
         <!-- topic name -->
         <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
         <remap from="/dist_to_goal_th" to="$(arg dist_to_goal_th)"/>

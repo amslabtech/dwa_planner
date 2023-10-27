@@ -25,7 +25,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("ANGLE_RESOLUTION", angle_resolution_, {0.087});
     local_nh_.param<double>("PREDICT_TIME", predict_time_, {3.0});
     local_nh_.param<double>("DT", dt_, {0.1});
-    local_nh_.param<double>("SLEEP_TIME_FOR_FINISH", sleep_time_for_finish_, {0.5});
+    local_nh_.param<double>("SLEEP_TIME_AFTER_FINISH", sleep_time_after_finish_, {0.5});
     local_nh_.param<double>("OBSTACLE_COST_GAIN", obs_cost_gain_, {1.0});
     local_nh_.param<double>("TO_GOAL_COST_GAIN", to_goal_cost_gain_, {1.0});
     local_nh_.param<double>("PATH_COST_GAIN", path_cost_gain_, {0.0});
@@ -53,7 +53,7 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("ANGLE_RESOLUTION: " << angle_resolution_);
     ROS_INFO_STREAM("PREDICT_TIME: " << predict_time_);
     ROS_INFO_STREAM("DT: " << dt_);
-    ROS_INFO_STREAM("SLEEP_TIME_FOR_FINISH: " << sleep_time_for_finish_);
+    ROS_INFO_STREAM("SLEEP_TIME_AFTER_FINISH: " << sleep_time_after_finish_);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << obs_cost_gain_);
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << to_goal_cost_gain_);
     ROS_INFO_STREAM("PATH_COST_GAIN: " << path_cost_gain_);
@@ -336,7 +336,7 @@ void DWAPlanner::process(void)
         velocity_pub_.publish(cmd_vel);
         finish_flag_pub_.publish(has_finished_);
         if (has_finished_.data)
-            ros::Duration(sleep_time_for_finish_).sleep();
+            ros::Duration(sleep_time_after_finish_).sleep();
 
         if (use_scan_as_input_)
             scan_updated_ = false;
