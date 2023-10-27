@@ -320,6 +320,7 @@ protected:
     double angle_resolution_;
     double predict_time_;
     double dt_;
+    double sleep_time_for_finish_;
     double obs_cost_gain_;
     double to_goal_cost_gain_;
     double path_cost_gain_;
