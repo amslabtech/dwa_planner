@@ -18,7 +18,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("MAX_VELOCITY", max_velocity_, {1.0});
     local_nh_.param<double>("MIN_VELOCITY", min_velocity_, {0.0});
     local_nh_.param<double>("MAX_YAWRATE", max_yawrate_, {1.0});
-    local_nh_.param<double>("MIN_YAWRATE", min_yawrate_, {0.1});
+    local_nh_.param<double>("MIN_YAWRATE", min_yawrate_, {0.05});
     local_nh_.param<double>("MIN_IN_PLACE_YAWRATE", min_in_place_yawrate_, {0.3});
     local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {0.5});
     local_nh_.param<double>("MAX_DECELERATION", max_deceleration_, {1.0});
@@ -33,7 +33,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("GOAL_THRESHOLD", dist_to_goal_th_, {0.3});
     local_nh_.param<double>("TURN_DIRECTION_THRESHOLD", turn_direction_th_, {1.0});
     local_nh_.param<double>("ANGLE_TO_GOAL_TH", angle_to_goal_th_, {M_PI});
-    local_nh_.param<double>("SLOW_VELOCITY_TH", slow_velocity_th_, {0.2});
+    local_nh_.param<double>("SLOW_VELOCITY_TH", slow_velocity_th_, {0.1});
     local_nh_.param<double>("OBS_RANGE", obs_range_, {2.5});
     local_nh_.param<bool>("USE_SCAN_AS_INPUT", use_scan_as_input_, {false});
     local_nh_.param<bool>("USE_FOOTPRINT", use_footprint_, {false});
