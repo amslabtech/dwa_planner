@@ -18,6 +18,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("MAX_VELOCITY", max_velocity_, {1.0});
     local_nh_.param<double>("MIN_VELOCITY", min_velocity_, {0.0});
     local_nh_.param<double>("MAX_YAWRATE", max_yawrate_, {1.0});
+    local_nh_.param<double>("MIN_YAWRATE", min_yawrate_, {0.05});
     local_nh_.param<double>("MIN_IN_PLACE_YAWRATE", min_in_place_yawrate_, {0.3});
     local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {0.5});
     local_nh_.param<double>("MAX_DECELERATION", max_deceleration_, {1.0});
@@ -32,6 +33,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("GOAL_THRESHOLD", dist_to_goal_th_, {0.3});
     local_nh_.param<double>("TURN_DIRECTION_THRESHOLD", turn_direction_th_, {1.0});
     local_nh_.param<double>("ANGLE_TO_GOAL_TH", angle_to_goal_th_, {M_PI});
+    local_nh_.param<double>("SLOW_VELOCITY_TH", slow_velocity_th_, {0.1});
     local_nh_.param<double>("OBS_RANGE", obs_range_, {2.5});
     local_nh_.param<bool>("USE_SCAN_AS_INPUT", use_scan_as_input_, {false});
     local_nh_.param<bool>("USE_FOOTPRINT", use_footprint_, {false});
@@ -47,6 +49,7 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("MAX_VELOCITY: " << max_velocity_);
     ROS_INFO_STREAM("MIN_VELOCITY: " << min_velocity_);
     ROS_INFO_STREAM("MAX_YAWRATE: " << max_yawrate_);
+    ROS_INFO_STREAM("MIN_YAWRATE: " << min_yawrate_);
     ROS_INFO_STREAM("MAX_ACCELERATION: " << max_acceleration_);
     ROS_INFO_STREAM("MAX_DECELERATION: " << max_deceleration_);
     ROS_INFO_STREAM("MAX_D_YAWRATE: " << max_d_yawrate_);
@@ -60,6 +63,7 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << dist_to_goal_th_);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << turn_direction_th_);
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << angle_to_goal_th_);
+    ROS_INFO_STREAM("SLOW_VELOCITY_TH: " << slow_velocity_th_);
     ROS_INFO_STREAM("OBS_RANGE: " << obs_range_);
     ROS_INFO_STREAM("USE_SCAN_AS_INPUT: " << use_scan_as_input_);
     ROS_INFO_STREAM("USE_FOOTPRINT: " << use_footprint_);
@@ -223,7 +227,9 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
         for (int j = 0; j < yawrate_samples_; j++)
         {
             std::pair<std::vector<State>, bool> traj;
-            const double y = dynamic_window.min_yawrate_ + yawrate_resolution * j;
+            double y = dynamic_window.min_yawrate_ + yawrate_resolution * j;
+            if (v < slow_velocity_th_)
+                y = y > 0 ? std::max(y, min_yawrate_) : std::min(y, -min_yawrate_);
             traj.first = generate_trajectory(v, y);
             Cost cost = evaluate_trajectory(traj.first, goal);
             costs.push_back(cost);
