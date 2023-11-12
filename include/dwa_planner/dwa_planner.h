@@ -112,7 +112,9 @@ public:
          * @brief Constructor
          * @param
          */
-        Cost(const float obs_cost, const float to_goal_cost, const float path_cost, const float total_cost);
+        Cost(
+            const float obs_cost, const float to_goal_cost, const float speed_cost, const float path_cost,
+            const float total_cost);
         /**
          * @brief
          */
@@ -124,6 +126,7 @@ public:
 
         float obs_cost_;
         float to_goal_cost_;
+        float speed_cost_;
         float path_cost_;
         float total_cost_;
 
@@ -185,6 +188,10 @@ public:
      * @return The distance of current pose to goal pose
      */
     float calc_to_goal_cost(const std::vector<State> &traj, const Eigen::Vector3d &goal);
+    /**
+     * @brief
+     */
+    float calc_speed_cost(const std::vector<State> &traj);
     /**
      * @brief
      */
@@ -324,6 +331,7 @@ protected:
     double sleep_time_after_finish_;
     double obs_cost_gain_;
     double to_goal_cost_gain_;
+    double speed_cost_gain_;
     double path_cost_gain_;
     double dist_to_goal_th_;
     double turn_direction_th_;
