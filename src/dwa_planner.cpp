@@ -29,6 +29,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("SLEEP_TIME_AFTER_FINISH", sleep_time_after_finish_, {0.5});
     local_nh_.param<double>("OBSTACLE_COST_GAIN", obs_cost_gain_, {1.0});
     local_nh_.param<double>("TO_GOAL_COST_GAIN", to_goal_cost_gain_, {1.0});
+    local_nh_.param<double>("SPEED_COST_GAIN", speed_cost_gain_, {0.1});
     local_nh_.param<double>("PATH_COST_GAIN", path_cost_gain_, {0.0});
     local_nh_.param<double>("GOAL_THRESHOLD", dist_to_goal_th_, {0.3});
     local_nh_.param<double>("TURN_DIRECTION_THRESHOLD", turn_direction_th_, {1.0});
@@ -59,6 +60,7 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("SLEEP_TIME_AFTER_FINISH: " << sleep_time_after_finish_);
     ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << obs_cost_gain_);
     ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << to_goal_cost_gain_);
+    ROS_INFO_STREAM("SPEED_COST_GAIN: " << speed_cost_gain_);
     ROS_INFO_STREAM("PATH_COST_GAIN: " << path_cost_gain_);
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << dist_to_goal_th_);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << turn_direction_th_);
@@ -113,22 +115,28 @@ DWAPlanner::Window::Window(const double min_v, const double max_v, const double 
 {
 }
 
-DWAPlanner::Cost::Cost(void) : to_goal_cost_(0.0), obs_cost_(0.0), path_cost_(0.0), total_cost_(0.0) {}
+DWAPlanner::Cost::Cost(void) : obs_cost_(0.0), to_goal_cost_(0.0), speed_cost_(0.0), path_cost_(0.0), total_cost_(0.0)
+{
+}
 
-DWAPlanner::Cost::Cost(const float to_goal_cost, const float obs_cost, const float path_cost, const float total_cost)
-    : to_goal_cost_(to_goal_cost), obs_cost_(obs_cost), path_cost_(path_cost), total_cost_(total_cost)
+DWAPlanner::Cost::Cost(
+    const float obs_cost, const float to_goal_cost, const float speed_cost, const float path_cost,
+    const float total_cost)
+    : obs_cost_(obs_cost), to_goal_cost_(to_goal_cost), speed_cost_(speed_cost), path_cost_(path_cost),
+      total_cost_(total_cost)
 {
 }
 
 void DWAPlanner::Cost::show(void)
 {
     ROS_INFO_STREAM("Cost: " << total_cost_);
-    ROS_INFO_STREAM("\tGoal cost: " << to_goal_cost_);
     ROS_INFO_STREAM("\tObs cost: " << obs_cost_);
+    ROS_INFO_STREAM("\tGoal cost: " << to_goal_cost_);
+    ROS_INFO_STREAM("\tSpeed cost: " << speed_cost_);
     ROS_INFO_STREAM("\tPath cost: " << path_cost_);
 }
 
-void DWAPlanner::Cost::calc_total_cost(void) { total_cost_ = to_goal_cost_ + obs_cost_ + path_cost_; }
+void DWAPlanner::Cost::calc_total_cost(void) { total_cost_ = obs_cost_ + to_goal_cost_ + speed_cost_ + path_cost_; }
 
 void DWAPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
 {
@@ -206,8 +214,8 @@ void DWAPlanner::edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg)
 std::vector<DWAPlanner::State>
 DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std::vector<State>, bool>> &trajectories)
 {
-    Cost min_cost(0.0, 0.0, 0.0, 1e6);
-    Window dynamic_window = calc_dynamic_window();
+    Cost min_cost(0.0, 0.0, 0.0, 0.0, 1e6);
+    const Window dynamic_window = calc_dynamic_window();
     const size_t trajectory_size = predict_time_ / dt_;
     std::vector<State> best_traj;
     best_traj.resize(trajectory_size);
@@ -231,7 +239,7 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
             if (v < slow_velocity_th_)
                 y = y > 0 ? std::max(y, min_yawrate_) : std::min(y, -min_yawrate_);
             traj.first = generate_trajectory(v, y);
-            Cost cost = evaluate_trajectory(traj.first, goal);
+            const Cost cost = evaluate_trajectory(traj.first, goal);
             costs.push_back(cost);
             if (cost.obs_cost_ == 1e6)
             {
@@ -249,7 +257,7 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
         {
             std::pair<std::vector<State>, bool> traj;
             traj.first = generate_trajectory(v, 0.0);
-            Cost cost = evaluate_trajectory(traj.first, goal);
+            const Cost cost = evaluate_trajectory(traj.first, goal);
             costs.push_back(cost);
             if (cost.obs_cost_ == 1e6)
             {
@@ -277,6 +285,7 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
             {
                 costs[i].to_goal_cost_ *= to_goal_cost_gain_;
                 costs[i].obs_cost_ *= obs_cost_gain_;
+                costs[i].speed_cost_ *= speed_cost_gain_;
                 costs[i].path_cost_ *= path_cost_gain_;
                 costs[i].calc_total_cost();
                 if (costs[i].total_cost_ < min_cost.total_cost_)
@@ -293,12 +302,14 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
     ROS_INFO_STREAM("num of trajectories available: " << available_traj_count << " of " << trajectories.size());
     ROS_INFO(" ");
 
+    ROS_INFO_STREAM("v: " << best_traj.front().velocity_);
+    ROS_INFO_STREAM("y: " << best_traj.front().yawrate_);
     return best_traj;
 }
 
 void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
 {
-    Cost min_cost(1e6, 1e6, 1e6, 1e6), max_cost;
+    Cost min_cost(1e6, 1e6, 1e6, 1e6, 1e6), max_cost;
 
     for (const auto &cost : costs)
     {
@@ -308,6 +319,8 @@ void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
             max_cost.obs_cost_ = std::max(max_cost.obs_cost_, cost.obs_cost_);
             min_cost.to_goal_cost_ = std::min(min_cost.to_goal_cost_, cost.to_goal_cost_);
             max_cost.to_goal_cost_ = std::max(max_cost.to_goal_cost_, cost.to_goal_cost_);
+            min_cost.speed_cost_ = std::min(min_cost.speed_cost_, cost.speed_cost_);
+            max_cost.speed_cost_ = std::max(max_cost.speed_cost_, cost.speed_cost_);
             if (use_path_cost_)
             {
                 min_cost.path_cost_ = std::min(min_cost.path_cost_, cost.path_cost_);
@@ -324,6 +337,8 @@ void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
                 (cost.obs_cost_ - min_cost.obs_cost_) / (max_cost.obs_cost_ - min_cost.obs_cost_ + DBL_EPSILON);
             cost.to_goal_cost_ = (cost.to_goal_cost_ - min_cost.to_goal_cost_) /
                                  (max_cost.to_goal_cost_ - min_cost.to_goal_cost_ + DBL_EPSILON);
+            cost.speed_cost_ =
+                (cost.speed_cost_ - min_cost.speed_cost_) / (max_cost.speed_cost_ - min_cost.speed_cost_ + DBL_EPSILON);
             if (use_path_cost_)
                 cost.path_cost_ =
                     (cost.path_cost_ - min_cost.path_cost_) / (max_cost.path_cost_ - min_cost.path_cost_ + DBL_EPSILON);
@@ -508,6 +523,12 @@ float DWAPlanner::calc_obs_cost(const std::vector<State> &traj)
     return obs_range_ - min_dist;
 }
 
+float DWAPlanner::calc_speed_cost(const std::vector<State> &traj)
+{
+    const Window dynamic_window = calc_dynamic_window();
+    return dynamic_window.max_velocity_ - traj.front().velocity_;
+}
+
 float DWAPlanner::calc_path_cost(const std::vector<State> &traj)
 {
     if (!use_path_cost_)
@@ -562,6 +583,7 @@ DWAPlanner::Cost DWAPlanner::evaluate_trajectory(const std::vector<State> &traje
     Cost cost;
     cost.to_goal_cost_ = calc_to_goal_cost(trajectory, goal);
     cost.obs_cost_ = calc_obs_cost(trajectory);
+    cost.speed_cost_ = calc_speed_cost(trajectory);
     cost.path_cost_ = calc_path_cost(trajectory);
     cost.calc_total_cost();
     return cost;
