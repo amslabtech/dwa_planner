@@ -35,7 +35,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("GOAL_THRESHOLD", dist_to_goal_th_, {0.3});
     local_nh_.param<double>("TURN_DIRECTION_THRESHOLD", turn_direction_th_, {1.0});
     local_nh_.param<double>("ANGLE_TO_GOAL_TH", angle_to_goal_th_, {M_PI});
-    local_nh_.param<double>("SIM_DIRECTION", sim_direction_, {0.52});
+    local_nh_.param<double>("SIM_DIRECTION", sim_direction_, {M_PI / 2.0});
     local_nh_.param<double>("SLOW_VELOCITY_TH", slow_velocity_th_, {0.1});
     local_nh_.param<double>("OBS_RANGE", obs_range_, {2.5});
     local_nh_.param<bool>("USE_SCAN_AS_INPUT", use_scan_as_input_, {false});
