@@ -103,7 +103,7 @@ DWAPlanner::DWAPlanner(void)
     else
         local_map_updated_ = true;
 
-    edge_point_on_path_.resize(2);
+    edge_points_on_path_.resize(2);
 }
 
 DWAPlanner::State::State(void) : x_(0.0), y_(0.0), yaw_(0.0), velocity_(0.0), yawrate_(0.0) {}
@@ -200,11 +200,11 @@ void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg)
 
 void DWAPlanner::edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg)
 {
-    edge_point_on_path_.front() = msg->poses.front();
-    edge_point_on_path_.back() = msg->poses.back();
+    edge_points_on_path_.front() = msg->poses.front();
+    edge_points_on_path_.back() = msg->poses.back();
     try
     {
-        for (auto &pose : edge_point_on_path_)
+        for (auto &pose : edge_points_on_path_)
         {
             listener_.transformPose(robot_frame_, ros::Time(0), pose, msg->header.frame_id, pose);
             edge_on_global_path_subscribed_ = true;
@@ -545,8 +545,8 @@ float DWAPlanner::calc_path_cost(const std::vector<State> &traj)
 
 float DWAPlanner::calc_dist_to_path(const State state)
 {
-    geometry_msgs::Point edge_point1 = edge_point_on_path_.front().pose.position;
-    geometry_msgs::Point edge_point2 = edge_point_on_path_.back().pose.position;
+    geometry_msgs::Point edge_point1 = edge_points_on_path_.front().pose.position;
+    geometry_msgs::Point edge_point2 = edge_points_on_path_.back().pose.position;
     const float a = edge_point2.y - edge_point1.y;
     const float b = -(edge_point2.x - edge_point1.x);
     const float c = -a * edge_point1.x - b * edge_point1.y;

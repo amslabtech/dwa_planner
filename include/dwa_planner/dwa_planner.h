@@ -377,7 +377,7 @@ protected:
     geometry_msgs::PoseStamped goal_;
     geometry_msgs::PoseArray obs_list_;
     geometry_msgs::PolygonStamped footprint_;
-    std::vector<geometry_msgs::PoseStamped> edge_point_on_path_;
+    std::vector<geometry_msgs::PoseStamped> edge_points_on_path_;
 
     std_msgs::Bool has_finished_;
 
