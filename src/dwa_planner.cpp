@@ -183,7 +183,7 @@ void DWAPlanner::odom_callback(const nav_msgs::OdometryConstPtr &msg)
 void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr &msg)
 {
     target_velocity_ = std::min(msg->linear.x, max_velocity_);
-    ROS_INFO_THROTTLE(1.0, "target velocity was updated to %f [m/s]", target_velocity_);
+    ROS_INFO_STREAM_THROTTLE(1.0, "target velocity was updated to " << target_velocity_ << " [m/s]");
 }
 
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
@@ -195,7 +195,7 @@ void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
 void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg)
 {
     dist_to_goal_th_ = msg->data;
-    ROS_INFO_THROTTLE(1.0, "distance to goal threshold was updated to %f [m]", dist_to_goal_th_);
+    ROS_INFO_STREAM_THROTTLE(1.0, "distance to goal threshold was updated to " << dist_to_goal_th_ << " [m]");
 }
 
 void DWAPlanner::edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg)
@@ -279,6 +279,7 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
 
     if (available_traj_count == 0)
     {
+        ROS_ERROR_THROTTLE(1.0, "No available trajectory");
         best_traj = generate_trajectory(0.0, 0.0);
     }
     else
@@ -303,12 +304,11 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
     }
 
     ROS_INFO("===");
+    ROS_INFO_STREAM("(v, y) = (" << best_traj.front().velocity_ << ", " << best_traj.front().yawrate_ << ")");
     min_cost.show();
     ROS_INFO_STREAM("num of trajectories available: " << available_traj_count << " of " << trajectories.size());
     ROS_INFO(" ");
 
-    ROS_INFO_STREAM("v: " << best_traj.front().velocity_);
-    ROS_INFO_STREAM("y: " << best_traj.front().yawrate_);
     return best_traj;
 }
 
