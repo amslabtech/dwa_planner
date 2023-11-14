@@ -19,6 +19,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("MIN_VELOCITY", min_velocity_, {0.0});
     local_nh_.param<double>("MAX_YAWRATE", max_yawrate_, {1.0});
     local_nh_.param<double>("MIN_YAWRATE", min_yawrate_, {0.05});
+    local_nh_.param<double>("MAX_IN_PLACE_YAWRATE", max_in_place_yawrate_, {0.6});
     local_nh_.param<double>("MIN_IN_PLACE_YAWRATE", min_in_place_yawrate_, {0.3});
     local_nh_.param<double>("MAX_ACCELERATION", max_acceleration_, {0.5});
     local_nh_.param<double>("MAX_DECELERATION", max_deceleration_, {1.0});
@@ -34,6 +35,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("GOAL_THRESHOLD", dist_to_goal_th_, {0.3});
     local_nh_.param<double>("TURN_DIRECTION_THRESHOLD", turn_direction_th_, {1.0});
     local_nh_.param<double>("ANGLE_TO_GOAL_TH", angle_to_goal_th_, {M_PI});
+    local_nh_.param<double>("SIM_DIRECTION", sim_direction_, {M_PI / 2.0});
     local_nh_.param<double>("SLOW_VELOCITY_TH", slow_velocity_th_, {0.1});
     local_nh_.param<double>("OBS_RANGE", obs_range_, {2.5});
     local_nh_.param<bool>("USE_SCAN_AS_INPUT", use_scan_as_input_, {false});
@@ -51,6 +53,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("MIN_VELOCITY: " << min_velocity_);
     ROS_INFO_STREAM("MAX_YAWRATE: " << max_yawrate_);
     ROS_INFO_STREAM("MIN_YAWRATE: " << min_yawrate_);
+    ROS_INFO_STREAM("MAX_IN_PLACE_YAWRATE: " << max_in_place_yawrate_);
+    ROS_INFO_STREAM("MIN_IN_PLACE_YAWRATE: " << min_in_place_yawrate_);
     ROS_INFO_STREAM("MAX_ACCELERATION: " << max_acceleration_);
     ROS_INFO_STREAM("MAX_DECELERATION: " << max_deceleration_);
     ROS_INFO_STREAM("MAX_D_YAWRATE: " << max_d_yawrate_);
@@ -65,6 +69,7 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("GOAL_THRESHOLD: " << dist_to_goal_th_);
     ROS_INFO_STREAM("TURN_DIRECTION_THRESHOLD: " << turn_direction_th_);
     ROS_INFO_STREAM("ANGLE_TO_GOAL_TH: " << angle_to_goal_th_);
+    ROS_INFO_STREAM("SIM_DIRECTION: " << sim_direction_);
     ROS_INFO_STREAM("SLOW_VELOCITY_TH: " << slow_velocity_th_);
     ROS_INFO_STREAM("OBS_RANGE: " << obs_range_);
     ROS_INFO_STREAM("USE_SCAN_AS_INPUT: " << use_scan_as_input_);
@@ -416,8 +421,8 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         if (can_adjust_robot_direction(goal))
         {
             const double angle_to_goal = atan2(goal.y(), goal.x());
-            cmd_vel.angular.z =
-                angle_to_goal > 0 ? std::min(angle_to_goal, max_yawrate_) : std::max(angle_to_goal, -max_yawrate_);
+            cmd_vel.angular.z = angle_to_goal > 0 ? std::min(angle_to_goal, max_in_place_yawrate_)
+                                                  : std::max(angle_to_goal, -max_in_place_yawrate_);
             cmd_vel.angular.z = cmd_vel.angular.z > 0 ? std::max(cmd_vel.angular.z, min_in_place_yawrate_)
                                                       : std::min(cmd_vel.angular.z, -min_in_place_yawrate_);
             best_traj.first = generate_trajectory(cmd_vel.angular.z, goal);
@@ -435,7 +440,8 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
         has_reached_ = true;
         if (turn_direction_th_ < fabs(goal[2]))
         {
-            cmd_vel.angular.z = goal[2] > 0 ? std::min(goal[2], max_yawrate_) : std::max(goal[2], -max_yawrate_);
+            cmd_vel.angular.z =
+                goal[2] > 0 ? std::min(goal[2], max_in_place_yawrate_) : std::max(goal[2], -max_in_place_yawrate_);
             cmd_vel.angular.z = cmd_vel.angular.z > 0 ? std::max(cmd_vel.angular.z, min_in_place_yawrate_)
                                                       : std::min(cmd_vel.angular.z, -min_in_place_yawrate_);
         }
@@ -462,7 +468,7 @@ bool DWAPlanner::can_adjust_robot_direction(const Eigen::Vector3d &goal)
     if (fabs(angle_to_goal) < angle_to_goal_th_)
         return false;
 
-    const double yawrate = std::min(std::max(angle_to_goal, -max_yawrate_), max_yawrate_);
+    const double yawrate = std::min(std::max(angle_to_goal, -max_in_place_yawrate_), max_in_place_yawrate_);
     std::vector<State> traj = generate_trajectory(yawrate, goal);
 
     if (!check_collision(traj))
@@ -564,8 +570,8 @@ std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double velo
 
 std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double yawrate, const Eigen::Vector3d &goal)
 {
-    const double angle_to_goal = atan2(goal.y(), goal.x());
-    const double predict_time = angle_to_goal / (yawrate + DBL_EPSILON);
+    const double target_direction = atan2(goal.y(), goal.x()) > 0 ? sim_direction_ : -sim_direction_;
+    const double predict_time = target_direction / (yawrate + DBL_EPSILON);
     const size_t trajectory_size = predict_time / dt_;
     std::vector<State> trajectory;
     trajectory.resize(trajectory_size);

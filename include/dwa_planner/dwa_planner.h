@@ -321,6 +321,7 @@ protected:
     double min_velocity_;
     double max_yawrate_;
     double min_yawrate_;
+    double max_in_place_yawrate_;
     double min_in_place_yawrate_;
     double max_acceleration_;
     double max_deceleration_;
@@ -336,6 +337,7 @@ protected:
     double dist_to_goal_th_;
     double turn_direction_th_;
     double angle_to_goal_th_;
+    double sim_direction_;
     double slow_velocity_th_;
     double obs_range_;
     bool use_footprint_;
