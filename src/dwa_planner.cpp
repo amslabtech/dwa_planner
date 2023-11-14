@@ -304,12 +304,11 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
     }
 
     ROS_INFO("===");
+    ROS_INFO_STREAM("(v, y) = (" << best_traj.front().velocity_ << ", " << best_traj.front().yawrate_ << ")");
     min_cost.show();
     ROS_INFO_STREAM("num of trajectories available: " << available_traj_count << " of " << trajectories.size());
     ROS_INFO(" ");
 
-    ROS_INFO_STREAM("v: " << best_traj.front().velocity_);
-    ROS_INFO_STREAM("y: " << best_traj.front().yawrate_);
     return best_traj;
 }
 
