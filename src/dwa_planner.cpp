@@ -1,7 +1,6 @@
 // Copyright 2023 amsl
 
 #include <algorithm>
-#include <math.h>
 #include <string>
 #include <utility>
 #include <vector>
