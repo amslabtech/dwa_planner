@@ -10,7 +10,8 @@
 DWAPlanner::DWAPlanner(void)
     : local_nh_("~"), footprint_subscribed_(false), goal_subscribed_(false), odom_updated_(false),
       edge_on_global_path_subscribed_(false), local_map_updated_(false), scan_updated_(false), has_reached_(false),
-      odom_not_subscribe_count_(0), local_map_not_subscribe_count_(0), scan_not_subscribe_count_(0)
+      use_speed_cost_(false), odom_not_subscribe_count_(0), local_map_not_subscribe_count_(0),
+      scan_not_subscribe_count_(0)
 {
     local_nh_.param<std::string>("ROBOT_FRAME", robot_frame_, {"base_link"});
     local_nh_.param<double>("HZ", hz_, {20});
@@ -324,8 +325,11 @@ void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
             max_cost.obs_cost_ = std::max(max_cost.obs_cost_, cost.obs_cost_);
             min_cost.to_goal_cost_ = std::min(min_cost.to_goal_cost_, cost.to_goal_cost_);
             max_cost.to_goal_cost_ = std::max(max_cost.to_goal_cost_, cost.to_goal_cost_);
-            min_cost.speed_cost_ = std::min(min_cost.speed_cost_, cost.speed_cost_);
-            max_cost.speed_cost_ = std::max(max_cost.speed_cost_, cost.speed_cost_);
+            if (use_speed_cost_)
+            {
+                min_cost.speed_cost_ = std::min(min_cost.speed_cost_, cost.speed_cost_);
+                max_cost.speed_cost_ = std::max(max_cost.speed_cost_, cost.speed_cost_);
+            }
             if (use_path_cost_)
             {
                 min_cost.path_cost_ = std::min(min_cost.path_cost_, cost.path_cost_);
@@ -342,8 +346,9 @@ void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> &costs)
                 (cost.obs_cost_ - min_cost.obs_cost_) / (max_cost.obs_cost_ - min_cost.obs_cost_ + DBL_EPSILON);
             cost.to_goal_cost_ = (cost.to_goal_cost_ - min_cost.to_goal_cost_) /
                                  (max_cost.to_goal_cost_ - min_cost.to_goal_cost_ + DBL_EPSILON);
-            cost.speed_cost_ =
-                (cost.speed_cost_ - min_cost.speed_cost_) / (max_cost.speed_cost_ - min_cost.speed_cost_ + DBL_EPSILON);
+            if (use_speed_cost_)
+                cost.speed_cost_ = (cost.speed_cost_ - min_cost.speed_cost_) /
+                                   (max_cost.speed_cost_ - min_cost.speed_cost_ + DBL_EPSILON);
             if (use_path_cost_)
                 cost.path_cost_ =
                     (cost.path_cost_ - min_cost.path_cost_) / (max_cost.path_cost_ - min_cost.path_cost_ + DBL_EPSILON);
@@ -415,12 +420,14 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     trajectories.reserve(trajectories_size);
 
     const Eigen::Vector3d goal(goal_.pose.position.x, goal_.pose.position.y, tf::getYaw(goal_.pose.orientation));
+    const double angle_to_goal = atan2(goal.y(), goal.x());
+    if (M_PI / 4.0 < fabs(angle_to_goal))
+        use_speed_cost_ = true;
 
     if (dist_to_goal_th_ < goal.segment(0, 2).norm() && !has_reached_)
     {
         if (can_adjust_robot_direction(goal))
         {
-            const double angle_to_goal = atan2(goal.y(), goal.x());
             cmd_vel.angular.z = angle_to_goal > 0 ? std::min(angle_to_goal, max_in_place_yawrate_)
                                                   : std::max(angle_to_goal, -max_in_place_yawrate_);
             cmd_vel.angular.z = cmd_vel.angular.z > 0 ? std::max(cmd_vel.angular.z, min_in_place_yawrate_)
@@ -458,6 +465,8 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     visualize_trajectories(trajectories, 0, 1, 0, candidate_trajectories_pub_);
     if (use_footprint_)
         visualize_footprints(best_traj.first, 0, 0, 1, predict_footprints_pub_);
+
+    use_speed_cost_ = false;
 
     return cmd_vel;
 }
@@ -531,6 +540,8 @@ float DWAPlanner::calc_obs_cost(const std::vector<State> &traj)
 
 float DWAPlanner::calc_speed_cost(const std::vector<State> &traj)
 {
+    if (!use_speed_cost_)
+        return 0.0;
     const Window dynamic_window = calc_dynamic_window();
     return dynamic_window.max_velocity_ - traj.front().velocity_;
 }

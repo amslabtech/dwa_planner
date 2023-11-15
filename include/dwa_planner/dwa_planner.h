@@ -343,6 +343,7 @@ protected:
     bool use_footprint_;
     bool use_scan_as_input_;
     bool use_path_cost_;
+    bool use_speed_cost_;
     bool footprint_subscribed_;
     bool goal_subscribed_;
     bool edge_on_global_path_subscribed_;
