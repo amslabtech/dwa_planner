@@ -31,7 +31,8 @@
 #include <Eigen/Dense>
 
 /**
- * @brief Class for dwa planner
+ * @class DWAPlanner
+ * @brief A class implementing a local planner using the Dynamic Window Approach
  */
 class DWAPlanner
 {
@@ -42,7 +43,8 @@ public:
     DWAPlanner(void);
 
     /**
-     * @brief Class for set pose
+     * @class State
+     * @brief A data class for state of robot
      */
     class State
     {
@@ -71,7 +73,8 @@ public:
     };
 
     /**
-     * @brief Class for calculating dynamic window
+     * @class Window
+     * @brief A data class for dynamic window
      */
     class Window
     {
@@ -99,28 +102,33 @@ public:
     };
 
     /**
-     * @brief
+     * @class Cost
+     * @brief A data class for cost
      */
     class Cost
     {
     public:
         /**
-         * @brief
+         * @brief Constructor
          */
         Cost(void);
         /**
          * @brief Constructor
-         * @param
+         * @param obs_cost The cost of obstacle
+         * @param to_goal_cost The cost of distance to goal
+         * @param speed_cost The cost of speed
+         * @param path_cost The cost of path
+         * @param total_cost The total cost
          */
         Cost(
             const float obs_cost, const float to_goal_cost, const float speed_cost, const float path_cost,
             const float total_cost);
         /**
-         * @brief
+         * @brief Show the cost
          */
         void show(void);
         /**
-         * @brief
+         * @brief Calculate the total cost
          */
         void calc_total_cost(void);
 
@@ -134,7 +142,7 @@ public:
     };
 
     /**
-     * @brief Calculate local path plan
+     * @brief Execute local path planning
      */
     void process(void);
     /**
@@ -158,15 +166,15 @@ public:
      */
     void target_velocity_callback(const geometry_msgs::TwistConstPtr &msg);
     /**
-     * @brief
+     * @brief A calllback to handle buffering footprint messages
      */
     void footprint_callback(const geometry_msgs::PolygonStampedPtr &msg);
     /**
-     * @brief
+     * @brief A callback to handle buffering distance to goal threshold messages
      */
     void dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg);
     /**
-     * @brief
+     * @brief A callback to handle buffering edge on global path messages
      */
     void edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg);
     /**
@@ -175,10 +183,9 @@ public:
      */
     Window calc_dynamic_window(void);
     /**
-     * @brief Caluclate distance from obstacle
-     * @param traj Theestimated trajectory
-     * @param obs_list The gird map informations which there is obstacle or not
-     * @return The inverde of distance from obstacle
+     * @brief Calculate obstacle cost
+     * @param traj The estimated trajectory
+     * @return The obstacle cost
      */
     float calc_obs_cost(const std::vector<State> &traj);
     /**
@@ -189,86 +196,122 @@ public:
      */
     float calc_to_goal_cost(const std::vector<State> &traj, const Eigen::Vector3d &goal);
     /**
-     * @brief
+     * @brief Calculate the speed cost
+     * @param traj The estimated trajectory
+     * @return The speed cost
      */
     float calc_speed_cost(const std::vector<State> &traj);
     /**
-     * @brief
+     * @brief Calculate the path cost
+     * @param traj The estimated trajectory
+     * @return The path cost
      */
     float calc_path_cost(const std::vector<State> &traj);
     /**
-     * @brief
+     * @brief Calculate the distance of current pose to global path
+     * @param state The robot state
+     * @return The distance of current pose to global path
      */
     float calc_dist_to_path(const State state);
     /**
-     * @brief Calculate the pose of robot
+     * @brief Simulate the robot motion
+     * @param state The start state of robot
      * @param velocity The velocity of robot
      * @param yawrate The angular velocity of robot
-     * @param state The constractor setting pose information
      */
     void motion(State &state, const double velocity, const double yawrate);
     /**
-     * @brief Change map coordinates to robot coordinates
-     * @return The position of obstacle
+     * @brief Get obstacle list from local map
      */
     void raycast(const nav_msgs::OccupancyGrid &map);
     /**
-     * @brief  Calculate the position of obstacle
-     * @return The position of obstacle
+     * @brief Get obstacle list from laser scan
      */
     void scan_to_obs(const sensor_msgs::LaserScan &scan);
     /**
-     * @brief
+     * @brief Calculate the distance from robot footprint to the nearest obstacle
+     * @param obstacle The position of obstacle
+     * @param state The robot state
+     * @return The distance from robot footprint to the nearest obstacle
      */
     float calc_dist_from_robot(const geometry_msgs::Point &obstacle, const State &state);
     /**
-     * @brief
+     * @brief Move the robot footprint to the target pose
+     * @param target_pose The target pose
+     * @return The moved footprint
      */
     geometry_msgs::PolygonStamped transform_footprint(const State &target_pose);
     /**
-     * @brief
+     * @brief Check if the obstacle is inside of robot footprint
+     * @param obstacle The position of obstacle
+     * @param footprint The robot footprint
+     * @param state The robot state
+     * @return True if the obstacle is inside of robot footprint
      */
     bool is_inside_of_robot(
         const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint, const State &state);
     /**
-     * @brief
+     * @brief Check if the target point is inside of triangle
+     * @param target_point The target point
+     * @param triangle The triangle
+     * @return True if the target point is inside of triangle
      */
     bool is_inside_of_triangle(const geometry_msgs::Point &target_point, const geometry_msgs::Polygon &triangle);
     /**
-     * @brief
+     * @brief Calculate the intersection point of the line and the circle
+     * @param obstacle The position of obstacle
+     * @param state The robot state
+     * @param footprint The robot footprint
+     * @return The intersection point of the line and the circle
      */
     geometry_msgs::Point calc_intersection(
         const geometry_msgs::Point &obstacle, const State &state, geometry_msgs::PolygonStamped footprint);
     /**
-     * @brief
+     * @brief Generate trajectory
+     * @param velocity The velocity of robot
+     * @param yawrate The angular velocity of robot
+     * @return The generated trajectory
      */
     std::vector<State> generate_trajectory(const double velocity, const double yawrate);
     /**
-     * @brief
+     * @brief Generate trajectory
+     * @param yawrate The angular velocity of robot
+     * @param goal The pose of goal
+     * @return The generated trajectory
      */
     std::vector<State> generate_trajectory(const double yawrate, const Eigen::Vector3d &goal);
     /**
-     * @brief
+     * @brief Evaluate trajectory
+     * @param trajectory The estimated trajectory
+     * @param goal The pose of goal
+     * @return The cost of trajectory
      */
     Cost evaluate_trajectory(const std::vector<State> &trajectory, const Eigen::Vector3d &goal);
     /**
-     * @brief
+     * @brief Check if the robot can move
+     * @return True if the robot can move
      */
     bool can_move(void);
     /**
-     * @brief
+     * @brief Calculate the command velocity
+     * @return The command velocity
      */
     geometry_msgs::Twist calc_cmd_vel(void);
     /**
-     * @brief
+     * @brief Check if the robot can adjust the direction
+     * @param goal The pose of goal
+     * @return True if the robot can adjust the direction
      */
     bool can_adjust_robot_direction(const Eigen::Vector3d &goal);
     /**
-     * @brief
+     * @brief Check if the robot has collided
+     * @param traj The estimated trajectory
+     * @return True if the robot has collided
      */
     bool check_collision(const std::vector<State> &traj);
     /**
-     * @brief
+     * @brief Normalize the costs
+     * @param costs array of costs
      */
     void normalize_costs(std::vector<Cost> &costs);
     /**
@@ -305,7 +348,7 @@ public:
         const std::vector<State> &trajectory, const double r, const double g, const double b,
         const ros::Publisher &pub);
     /**
-     * @brief Execut dwa planner
+     * @brief Execute dwa planning
      * @param window Dynamic window
      * @param goal Goal pose
      * @param obs_list Obstacle's position

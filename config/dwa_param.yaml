@@ -2,7 +2,9 @@ TARGET_VELOCITY: 0.8
 PREDICT_TIME: 3.0
 OBSTACLE_COST_GAIN: 1.0
 TO_GOAL_COST_GAIN: 0.8
+# If path cost is used, setting the param "SPEED_COST_GAIN" to a value close to the param "PATH_COST_GAIN" may indicate better behavior
 SPEED_COST_GAIN: 0.4
+# If path cost is used, set the param "USE_PATH_COST" to true
 PATH_COST_GAIN: 0.4
 ANGLE_RESOLUTION: 0.087
 DT: 0.1
