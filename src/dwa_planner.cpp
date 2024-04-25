@@ -13,6 +13,7 @@ DWAPlanner::DWAPlanner(void)
       use_speed_cost_(false), odom_not_subscribe_count_(0), local_map_not_subscribe_count_(0),
       scan_not_subscribe_count_(0)
 {
+    local_nh_.param<std::string>("GLOBAL_FRAME", global_frame_, {"map"});
     local_nh_.param<std::string>("ROBOT_FRAME", robot_frame_, {"base_link"});
     local_nh_.param<double>("HZ", hz_, {20});
     local_nh_.param<double>("TARGET_VELOCITY", target_velocity_, {0.55});
@@ -47,6 +48,7 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<int>("YAWRATE_SAMPLES", yawrate_samples_, {20});
 
     ROS_INFO("=== DWA Planner ===");
+    ROS_INFO_STREAM("GLOBAL_FRAME: " << global_frame_);
     ROS_INFO_STREAM("ROBOT_FRAME: " << robot_frame_);
     ROS_INFO_STREAM("HZ: " << hz_);
     ROS_INFO_STREAM("TARGET_VELOCITY: " << target_velocity_);
@@ -89,7 +91,7 @@ DWAPlanner::DWAPlanner(void)
     dist_to_goal_th_sub_ = nh_.subscribe("/dist_to_goal_th", 1, &DWAPlanner::dist_to_goal_th_callback, this);
     edge_on_global_path_sub_ = nh_.subscribe("/path", 1, &DWAPlanner::edge_on_global_path_callback, this);
     footprint_sub_ = nh_.subscribe("/footprint", 1, &DWAPlanner::footprint_callback, this);
-    goal_sub_ = nh_.subscribe("/local_goal", 1, &DWAPlanner::goal_callback, this);
+    goal_sub_ = nh_.subscribe("/move_base_simple/goal", 1, &DWAPlanner::goal_callback, this);
     local_map_sub_ = nh_.subscribe("/local_map", 1, &DWAPlanner::local_map_callback, this);
     odom_sub_ = nh_.subscribe("/odom", 1, &DWAPlanner::odom_callback, this);
     scan_sub_ = nh_.subscribe("/scan", 1, &DWAPlanner::scan_callback, this);
@@ -146,16 +148,20 @@ void DWAPlanner::Cost::calc_total_cost(void) { total_cost_ = obs_cost_ + to_goal
 
 void DWAPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
 {
-    goal_ = *msg;
-    try
+    goal_msg_ = *msg;
+    if (goal_msg_.header.frame_id != global_frame_)
     {
-        listener_.transformPose(robot_frame_, ros::Time(0), goal_, goal_.header.frame_id, goal_);
-        goal_subscribed_ = true;
+        try
+        {
+            listener_.transformPose(global_frame_, ros::Time(0), goal_msg_, goal_msg_.header.frame_id, goal_msg_);
+        }
+        catch (tf::TransformException ex)
+        {
+            ROS_ERROR("%s", ex.what());
+        }
     }
-    catch (tf::TransformException ex)
-    {
-        ROS_ERROR("%s", ex.what());
-    }
+    ROS_INFO("goal was updated");
+    goal_subscribed_ = true;
 }
 
 void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr &msg)
@@ -419,7 +425,17 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     const size_t trajectories_size = velocity_samples_ * (yawrate_samples_ + 1);
     trajectories.reserve(trajectories_size);
 
+    geometry_msgs::PoseStamped goal_;
+    try
+    {
+        listener_.transformPose(robot_frame_, ros::Time(0), goal_msg_, goal_msg_.header.frame_id, goal_);
+    }
+    catch (tf::TransformException ex)
+    {
+        ROS_ERROR("%s", ex.what());
+    }
     const Eigen::Vector3d goal(goal_.pose.position.x, goal_.pose.position.y, tf::getYaw(goal_.pose.orientation));
+
     const double angle_to_goal = atan2(goal.y(), goal.x());
     if (M_PI / 4.0 < fabs(angle_to_goal))
         use_speed_cost_ = true;
