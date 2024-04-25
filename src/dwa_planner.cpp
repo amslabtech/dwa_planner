@@ -47,6 +47,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<int>("VELOCITY_SAMPLES", velocity_samples_, {3});
     local_nh_.param<int>("YAWRATE_SAMPLES", yawrate_samples_, {20});
 
+    target_velocity_ = std::min(target_velocity_, max_velocity_);
+
     ROS_INFO("=== DWA Planner ===");
     ROS_INFO_STREAM("GLOBAL_FRAME: " << global_frame_);
     ROS_INFO_STREAM("ROBOT_FRAME: " << robot_frame_);
