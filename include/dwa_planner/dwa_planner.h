@@ -458,4 +458,4 @@ protected:
   tf::TransformListener listener_;
 };
 
-#endif // DWA_PLANNER_DWA_PLANNER_H
+#endif  // DWA_PLANNER_DWA_PLANNER_H
