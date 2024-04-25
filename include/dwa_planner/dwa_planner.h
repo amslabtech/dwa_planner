@@ -240,7 +240,7 @@ public:
      * @param target_pose The target pose
      * @return The moved footprint
      */
-    geometry_msgs::PolygonStamped transform_footprint(const State &target_pose);
+    geometry_msgs::PolygonStamped move_footprint(const State &target_pose);
     /**
      * @brief Check if the obstacle is inside of robot footprint
      * @param obstacle The position of obstacle

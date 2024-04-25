@@ -508,7 +508,7 @@ bool DWAPlanner::check_collision(const std::vector<State> &traj)
     {
         for (const auto &obs : obs_list_.poses)
         {
-            const geometry_msgs::PolygonStamped footprint = transform_footprint(state);
+            const geometry_msgs::PolygonStamped footprint = move_footprint(state);
             if (is_inside_of_robot(obs.position, footprint, state))
                 return true;
         }
@@ -657,7 +657,7 @@ geometry_msgs::Point DWAPlanner::calc_intersection(
 
 float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Point &obstacle, const State &state)
 {
-    const geometry_msgs::PolygonStamped footprint = transform_footprint(state);
+    const geometry_msgs::PolygonStamped footprint = move_footprint(state);
     if (is_inside_of_robot(obstacle, footprint, state))
     {
         return 0.0;
@@ -669,7 +669,7 @@ float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Point &obstacle, con
     }
 }
 
-geometry_msgs::PolygonStamped DWAPlanner::transform_footprint(const State &target_pose)
+geometry_msgs::PolygonStamped DWAPlanner::move_footprint(const State &target_pose)
 {
     geometry_msgs::PolygonStamped footprint = footprint_;
     footprint.header.stamp = ros::Time::now();
@@ -889,7 +889,7 @@ void DWAPlanner::visualize_footprints(
         pose.orientation.w = 1;
         v_footprint.pose = pose;
         geometry_msgs::Point p;
-        const geometry_msgs::PolygonStamped footprint = transform_footprint(trajectory[i]);
+        const geometry_msgs::PolygonStamped footprint = move_footprint(trajectory[i]);
         for (const auto &point : footprint.polygon.points)
         {
             p.x = point.x;
