@@ -768,8 +768,15 @@ void DWAPlanner::scan_to_obs(const sensor_msgs::LaserScan &scan)
 {
     obs_list_.poses.clear();
     float angle = scan.angle_min;
-    for (auto r : scan.ranges)
+    const int angle_index_step = static_cast<int>(angle_resolution_ / scan.angle_increment);
+    for (int i = 0; i < scan.ranges.size(); i++)
     {
+        const float r = scan.ranges[i];
+        if (r < scan.range_min || scan.range_max < r || i % angle_index_step != 0)
+        {
+            angle += scan.angle_increment;
+            continue;
+        }
         geometry_msgs::Pose pose;
         pose.position.x = r * cos(angle);
         pose.position.y = r * sin(angle);
