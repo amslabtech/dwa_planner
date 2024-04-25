@@ -120,11 +120,6 @@ DWAPlanner::State::State(const double x, const double y, const double yaw, const
 
 DWAPlanner::Window::Window(void) : min_velocity_(0.0), max_velocity_(0.0), min_yawrate_(0.0), max_yawrate_(0.0) {}
 
-DWAPlanner::Window::Window(const double min_v, const double max_v, const double min_y, const double max_y)
-    : min_velocity_(min_v), max_velocity_(max_v), min_yawrate_(min_y), max_yawrate_(max_y)
-{
-}
-
 DWAPlanner::Cost::Cost(void) : obs_cost_(0.0), to_goal_cost_(0.0), speed_cost_(0.0), path_cost_(0.0), total_cost_(0.0)
 {
 }
@@ -521,7 +516,7 @@ bool DWAPlanner::check_collision(const std::vector<State> &traj)
 
 DWAPlanner::Window DWAPlanner::calc_dynamic_window(void)
 {
-    Window window(min_velocity_, max_velocity_, -max_yawrate_, max_yawrate_);
+    Window window;
     window.min_velocity_ = std::max((current_cmd_vel_.linear.x - max_deceleration_ * dt_), min_velocity_);
     window.max_velocity_ = std::min((current_cmd_vel_.linear.x + max_acceleration_ * dt_), target_velocity_);
     window.min_yawrate_ = std::max((current_cmd_vel_.angular.z - max_d_yawrate_ * dt_), -max_yawrate_);
