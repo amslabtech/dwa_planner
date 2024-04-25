@@ -83,15 +83,6 @@ public:
          * @brief Constructor
          */
         Window(void);
-        /**
-         * @brief Constructor
-         * @param min_velocity The minimum velocity of robot
-         * @param max_velocity The maximum velocity of robot
-         * @param min_yawrate The minimum angular velocity of robot
-         * @param max_yawrate The maximum angular velocity of robot
-         */
-        Window(
-            const double min_velocity, const double max_velocity, const double min_yawrate, const double max_yawrate);
 
         double min_velocity_;
         double max_velocity_;
