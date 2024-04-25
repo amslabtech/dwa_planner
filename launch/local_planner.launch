@@ -5,6 +5,7 @@
 
     <!-- param -->
     <arg name="hz" default="20"/>
+    <arg name="global_frame" default="map"/>
     <arg name="subscribe_count_th" default="3"/>
     <arg name="sleep_time_after_finish" default="0.5"/>
     <arg name="use_scan_as_input" default="false"/>
@@ -13,11 +14,11 @@
     <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
     <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
     <!-- topic name -->
-    <arg name="cmd_vel" default="/local_path/cmd_vel"/>
+    <arg name="cmd_vel" default="/cmd_vel"/>
     <arg name="dist_to_goal_th" default="/dist_to_goal_th"/>
     <arg name="path" default="/path"/>
     <arg name="footprint" default="/footprint"/>
-    <arg name="local_goal" default="/local_goal"/>
+    <arg name="local_goal" default="/move_base_simple/goal"/>
     <arg name="local_map" default="/local_map"/>
     <arg name="odom" default="/odom"/>
     <arg name="scan" default="/scan"/>
@@ -29,6 +30,7 @@
         <rosparam command="load" file="$(arg robot_param)"/>
         <rosparam command="load" file="$(arg dwa_param)"/>
         <param name="HZ" value="$(arg hz)"/>
+        <param name="GLOBAL_FRAME" value="$(arg global_frame)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <param name="USE_FOOTPRINT" value="$(arg use_footprint)"/>
         <param name="USE_PATH_COST" value="$(arg use_path_cost)"/>
@@ -39,7 +41,7 @@
         <remap from="/dist_to_goal_th" to="$(arg dist_to_goal_th)"/>
         <remap from="/path" to="$(arg path)"/>
         <remap from="/footprint" to="$(arg footprint)"/>
-        <remap from="/local_goal" to="$(arg local_goal)"/>
+        <remap from="/move_base_simple/goal" to="$(arg local_goal)"/>
         <remap from="/local_map" to="$(arg local_map)"/>
         <remap from="/odom" to="$(arg odom)"/>
         <remap from="/scan" to="$(arg scan)"/>

@@ -357,6 +357,7 @@ public:
     dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std::vector<State>, bool>> &trajectories);
 
 protected:
+    std::string global_frame_;
     std::string robot_frame_;
     double hz_;
     double target_velocity_;
@@ -418,7 +419,7 @@ protected:
     ros::Subscriber target_velocity_sub_;
 
     geometry_msgs::Twist current_cmd_vel_;
-    geometry_msgs::PoseStamped goal_;
+    geometry_msgs::PoseStamped goal_msg_;
     geometry_msgs::PoseArray obs_list_;
     geometry_msgs::PolygonStamped footprint_;
     std::vector<geometry_msgs::PoseStamped> edge_points_on_path_;
