@@ -40,6 +40,8 @@ DWAPlanner::DWAPlanner(void)
     local_nh_.param<double>("SIM_DIRECTION", sim_direction_, {M_PI / 2.0});
     local_nh_.param<double>("SLOW_VELOCITY_TH", slow_velocity_th_, {0.1});
     local_nh_.param<double>("OBS_RANGE", obs_range_, {2.5});
+    local_nh_.param<double>("ROBOT_RADIUS", robot_radius_, {0.1});
+    local_nh_.param<double>("FOOTPRINT_PADDING", footprint_padding_, {0.01});
     local_nh_.param<bool>("USE_SCAN_AS_INPUT", use_scan_as_input_, {false});
     local_nh_.param<bool>("USE_FOOTPRINT", use_footprint_, {false});
     local_nh_.param<bool>("USE_PATH_COST", use_path_cost_, {false});
@@ -77,6 +79,8 @@ DWAPlanner::DWAPlanner(void)
     ROS_INFO_STREAM("SIM_DIRECTION: " << sim_direction_);
     ROS_INFO_STREAM("SLOW_VELOCITY_TH: " << slow_velocity_th_);
     ROS_INFO_STREAM("OBS_RANGE: " << obs_range_);
+    ROS_INFO_STREAM("ROBOT_RADIUS: " << robot_radius_);
+    ROS_INFO_STREAM("FOOTPRINT_PADDING: " << footprint_padding_);
     ROS_INFO_STREAM("USE_SCAN_AS_INPUT: " << use_scan_as_input_);
     ROS_INFO_STREAM("USE_FOOTPRINT: " << use_footprint_);
     ROS_INFO_STREAM("USE_PATH_COST: " << use_path_cost_);
@@ -193,6 +197,11 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr &ms
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
 {
     footprint_ = *msg;
+    for (auto &point : footprint_.polygon.points)
+    {
+        point.x += point.x < 0 ? -footprint_padding_ : footprint_padding_;
+        point.y += point.y < 0 ? -footprint_padding_ : footprint_padding_;
+    }
     footprint_subscribed_ = true;
 }
 
@@ -501,6 +510,9 @@ bool DWAPlanner::can_adjust_robot_direction(const Eigen::Vector3d &goal)
 
 bool DWAPlanner::check_collision(const std::vector<State> &traj)
 {
+    if (!use_footprint_)
+        return false;
+
     for (const auto &state : traj)
     {
         for (const auto &obs : obs_list_.poses)
@@ -541,7 +553,8 @@ float DWAPlanner::calc_obs_cost(const std::vector<State> &traj)
             if (use_footprint_)
                 dist = calc_dist_from_robot(obs.position, state);
             else
-                dist = hypot((state.x_ - obs.position.x), (state.y_ - obs.position.y));
+                dist = hypot((state.x_ - obs.position.x), (state.y_ - obs.position.y))
+                       - robot_radius_ - footprint_padding_;
 
             if (dist < DBL_EPSILON)
                 return 1e6;

@@ -375,6 +375,8 @@ protected:
     double sim_direction_;
     double slow_velocity_th_;
     double obs_range_;
+    double robot_radius_;
+    double footprint_padding_;
     bool use_footprint_;
     bool use_scan_as_input_;
     bool use_path_cost_;
