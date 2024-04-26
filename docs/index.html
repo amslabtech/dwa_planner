@@ -22,85 +22,85 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><p><a href="https://github.com/amslabtech/dwa_planner/actions"><object type="image/svg+xml" data="https://github.com/amslabtech/dwa_planner/workflows/CI/badge.svg" style="pointer-events: none;">CI</object></a> <a href="https://github.com/amslabtech/dwa_planner/issues?q=is%3Aopen+is%3Aissue"><object type="image/svg+xml" data="https://img.shields.io/github/issues/amslabtech/dwa_planner.svg" style="pointer-events: none;">issue_opened</object></a> <a href="https://github.com/amslabtech/dwa_planner/issues?q=is%3Aissue+is%3Aclosed"><object type="image/svg+xml" data="https://img.shields.io/github/issues-closed/amslabtech/dwa_planner.svg" style="pointer-events: none;">issue_closed</object></a></p>
+<h1><a class="anchor" id="autotoc_md21"></a>
+Overview</h1>
+<p>ROS implementation of DWA(Dynamic Window Approach) Planner</p>
+<p>The API documentation is available at <a href="https://amslabtech.github.io/dwa_planner/">https://amslabtech.github.io/dwa_planner/</a></p>
+<p><b>Note: This simulator is not provided.</b></p>
 <div class="image">
 <img src="demo_dwa.gif" alt=""/>
 <div class="caption">
-demo_dwa</div></div>
-   <h1><a class="anchor" id="autotoc_md1"></a>
+demo1</div></div>
+   <h1><a class="anchor" id="autotoc_md22"></a>
 Environment</h1>
 <ul>
 <li>Ubuntu 20.04</li>
 <li>ROS Noetic</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md2"></a>
+<h1><a class="anchor" id="autotoc_md23"></a>
 Install and Build</h1>
-<div class="fragment"><div class="line">cd catkin_workspace/src</div>
+<div class="fragment"><div class="line"># clone repository</div>
+<div class="line">cd /path/to/your/catkin_ws/src</div>
 <div class="line">git clone https://github.com/amslabtech/dwa_planner.git</div>
-<div class="line">cd dwa_planner</div>
-<div class="line">catkin build --this</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md3"></a>
+<div class="line"> </div>
+<div class="line"># build</div>
+<div class="line">cd /path/to/your/catkin_ws</div>
+<div class="line">rosdep install --from-paths src --ignore-src -y      # Install dependencies</div>
+<div class="line">catkin build dwa_planner -DCMAKE_BUILD_TYPE=Release  # Release build is recommended</div>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md24"></a>
+How to use</h1>
+<div class="fragment"><div class="line">roslaunch dwa_planner local_planner.launch</div>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md25"></a>
+Running the demo</h1>
+<h2><a class="anchor" id="autotoc_md26"></a>
+Using dataset</h2>
+<div class="fragment"><div class="line">roslaunch dwa_planner local_planner.launch</div>
+<div class="line">rosbag play /path/to/your/dataset.bag</div>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md27"></a>
+Using simulatior</h2>
+<div class="fragment"><div class="line"># clone repository</div>
+<div class="line">cd /path/to/your/catkin_ws/src</div>
+<div class="line">git clone -b noetic-devel https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git</div>
+<div class="line">git clone -b noetic-devel https://github.com/ROBOTIS-GIT/turtlebot3.git</div>
+<div class="line">git clone -b noetic-devel https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git</div>
+<div class="line"> </div>
+<div class="line"># build</div>
+<div class="line">cd /path/to/your/catkin_ws</div>
+<div class="line">rosdep install --from-paths src --ignore-src -y # Install dependencies</div>
+<div class="line">catkin build -DCMAKE_BUILD_TYPE=Release         # Release build is recommended</div>
+<div class="line"> </div>
+<div class="line"># run demo</div>
+<div class="line">export TURTLEBOT3_MODEL=burger</div>
+<div class="line">roslaunch turtlebot3_navigation turtlebot3_navigation.launch</div>
+<div class="line">export TURTLEBOT3_MODEL=burger</div>
+<div class="line">roslaunch turtlebot3_gazebo turtlebot3_world.launch</div>
+<div class="line">roslaunch dwa_planner local_planner.launch use_scan_as_input:=True</div>
+</div><!-- fragment --><div class="image">
+<img src="demo_dwa_3.gif" alt=""/>
+<div class="caption">
+demo3</div></div>
+   <h1><a class="anchor" id="autotoc_md28"></a>
 Node I/O</h1>
 <div class="image">
 <img src="dwa_planner_io.png" alt=""/>
 <div class="caption">
 dwa_planner I/O diagram</div></div>
-   <h2><a class="anchor" id="autotoc_md4"></a>
-Optional Topics</h2>
-<ul>
-<li>/scan<ul>
-<li>Default input is /local_map</li>
-<li>If /scan is used, set <code>use_scan_as_input</code> to true</li>
-</ul>
-</li>
-<li>/footprint<ul>
-<li>robot footprint</li>
-<li>If /footprint is used, set <code>use_footprint</code> to true</li>
-<li><code>footprint_publisher</code> node in <code>amsl_navigation_utils</code> repository publishes rectangular footprint</li>
-</ul>
-</li>
-<li>/path<ul>
-<li>for path cost</li>
-<li>Default evaluation does not use path cost</li>
-<li>If path cost is used, set <code>use_path_cost</code> to true<ul>
-<li>Give a part of the global path (edge)</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h2><a class="anchor" id="autotoc_md5"></a>
-Parameters</h2>
-<ul>
-<li>HZ<ul>
-<li>main loop rate (default: 20[Hz])</li>
-</ul>
-</li>
-<li>TARGET_VELOCITY<ul>
-<li>max velocity of robot's target velocity (default: 0.55[m/s])</li>
-</ul>
-</li>
-<li>ROBOT_FRAME<ul>
-<li>robot's coordinate frame (default: base_link)</li>
-</ul>
-</li>
-</ul>
-<h2><a class="anchor" id="autotoc_md6"></a>
+   <h2><a class="anchor" id="autotoc_md29"></a>
+Published/Subscribed Topics</h2>
+<p>Access <a class="el" href="md_docs_Topics.html">here</a></p>
+<h2><a class="anchor" id="autotoc_md30"></a>
 Runtime requirement</h2>
 <ul>
-<li>TF (from LocalMap_FRAME to ROBOT_FRAME) is required</li>
+<li>TF (from GLOBAL_FRAME to ROBOT_FRAME) is required</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md7"></a>
-How to Use</h1>
-<ul>
-<li>for local path planning <div class="fragment"><div class="line">roslaunch dwa_planner local_planner.launch</div>
-</div><!-- fragment --></li>
-</ul>
-<h1><a class="anchor" id="autotoc_md8"></a>
+<h1><a class="anchor" id="autotoc_md31"></a>
+Parameters</h1>
+<p>Access <a class="el" href="md_docs_Parameters.html">here</a></p>
+<h1><a class="anchor" id="autotoc_md32"></a>
 References</h1>
 <ul>
-<li>D. Fox, W. Burgard, and S.Thrun, "The dynamic window approach to collision avoidance", IEEE Robotics Automation Magazine, 1997.</li>
+<li><a href="https://ieeexplore.ieee.org/abstract/document/580977">D. Fox, W. Burgard, and S.Thrun, "The dynamic window approach to collision avoidance", IEEE Robotics Automation Magazine, 1997.</a> </li>
 </ul>
-<p>(<a href="https://ieeexplore.ieee.org/abstract/document/580977">https://ieeexplore.ieee.org/abstract/document/580977</a>) </p>
 </div></div><!-- PageDoc -->
 </div><!-- contents -->
 
@@ -108,7 +108,7 @@ References</h1>
 <hr size="1"><div style="align: right;">
 <a href="http://wiki.ros.org/dwa_planner">dwa_planner</a><br />
 Author(s): </br />
-<small>autogenerated on Fri Apr 26 2024 14:25:53</small>
+<small>autogenerated on Sat Apr 27 2024 01:43:59</small>
 </div>
 </body>
 </html>
