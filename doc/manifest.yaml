@@ -1,0 +1,23 @@
+actions: []
+authors: ''
+brief: ''
+bugtracker: ''
+depends:
+- geometry_msgs
+- visualization_msgs
+- nav_msgs
+- sensor_msgs
+- tf
+- roslint
+- eigen
+- catkin
+- rostest
+- roscpp
+description: The dwa_planner package
+license: BSD 3-Clause License
+maintainers: amsl <amsl@todo.todo>
+msgs: []
+package_type: package
+repo_url: ''
+srvs: []
+url: ''
