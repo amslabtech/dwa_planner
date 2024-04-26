@@ -1,4 +1,4 @@
-// Copyright 2023 amsl
+// Copyright 2020 amsl
 
 #include "dwa_planner/dwa_planner.h"
 
