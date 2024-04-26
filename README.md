@@ -35,13 +35,7 @@ roslaunch dwa_planner local_planner.launch
 ```
 
 ## Running the demo
-### Using dataset
-```
-roslaunch dwa_planner local_planner.launch
-rosbag play /path/to/your/dataset.bag
-```
-
-### Using simulatior
+### Using simulator
 ```
 # clone repository
 cd /path/to/your/catkin_ws/src
