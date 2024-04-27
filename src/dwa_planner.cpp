@@ -28,7 +28,6 @@ DWAPlanner::DWAPlanner(void)
   local_nh_.param<double>("MAX_D_YAWRATE", max_d_yawrate_, {3.2});
   local_nh_.param<double>("ANGLE_RESOLUTION", angle_resolution_, {0.087});
   local_nh_.param<double>("PREDICT_TIME", predict_time_, {3.0});
-  local_nh_.param<double>("DT", dt_, {0.1});
   local_nh_.param<double>("SLEEP_TIME_AFTER_FINISH", sleep_time_after_finish_, {0.5});
   local_nh_.param<double>("OBSTACLE_COST_GAIN", obs_cost_gain_, {1.0});
   local_nh_.param<double>("TO_GOAL_COST_GAIN", to_goal_cost_gain_, {0.8});
@@ -68,7 +67,6 @@ DWAPlanner::DWAPlanner(void)
   ROS_INFO_STREAM("MAX_D_YAWRATE: " << max_d_yawrate_);
   ROS_INFO_STREAM("ANGLE_RESOLUTION: " << angle_resolution_);
   ROS_INFO_STREAM("PREDICT_TIME: " << predict_time_);
-  ROS_INFO_STREAM("DT: " << dt_);
   ROS_INFO_STREAM("SLEEP_TIME_AFTER_FINISH: " << sleep_time_after_finish_);
   ROS_INFO_STREAM("OBSTACLE_COST_GAIN: " << obs_cost_gain_);
   ROS_INFO_STREAM("TO_GOAL_COST_GAIN: " << to_goal_cost_gain_);
@@ -174,7 +172,6 @@ void DWAPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
       ROS_ERROR("%s", ex.what());
     }
   }
-  ROS_INFO("goal was updated");
   goal_subscribed_ = true;
 }
 
@@ -539,11 +536,12 @@ bool DWAPlanner::check_collision(const std::vector<State> &traj)
 
 DWAPlanner::Window DWAPlanner::calc_dynamic_window(void)
 {
+  const double dt = 1.0 / hz_;
   Window window;
-  window.min_velocity_ = std::max((current_cmd_vel_.linear.x - max_deceleration_ * dt_), min_velocity_);
-  window.max_velocity_ = std::min((current_cmd_vel_.linear.x + max_acceleration_ * dt_), target_velocity_);
-  window.min_yawrate_ = std::max((current_cmd_vel_.angular.z - max_d_yawrate_ * dt_), -max_yawrate_);
-  window.max_yawrate_ = std::min((current_cmd_vel_.angular.z + max_d_yawrate_ * dt_), max_yawrate_);
+  window.min_velocity_ = std::max((current_cmd_vel_.linear.x - max_deceleration_ * dt), min_velocity_);
+  window.max_velocity_ = std::min((current_cmd_vel_.linear.x + max_acceleration_ * dt), target_velocity_);
+  window.min_yawrate_ = std::max((current_cmd_vel_.angular.z - max_d_yawrate_ * dt), -max_yawrate_);
+  window.max_yawrate_ = std::min((current_cmd_vel_.angular.z + max_d_yawrate_ * dt), max_yawrate_);
   return window;
 }
 
