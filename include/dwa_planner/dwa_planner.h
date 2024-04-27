@@ -85,6 +85,11 @@ public:
      */
     Window(void);
 
+    /**
+     * @brief Show the dynamic window information
+     */
+    void show(void);
+
     double min_velocity_;
     double max_velocity_;
     double min_yawrate_;
