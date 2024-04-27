@@ -19,6 +19,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/ColorRGBA.h>
 #include <std_msgs/Float64.h>
 #include <string>
 #include <tf/tf.h>
@@ -346,38 +347,38 @@ public:
   void normalize_costs(std::vector<Cost> &costs);
 
   /**
-   * @brief Publish candidate trajectories
-   * @param trajectories Candidated trajectories
-   * @param r Rgb color chart number of red
-   * @param g Rgb color chart number of green
-   * @param b Rgb color chart number of blue
-   * @param pub Publisher of candidate trajectories
+   * @brief Create a marker message
+   * @param id The id of marker
+   * @param scale The scale of marker
+   * @param color The color of marker
+   * @param trajectory The estimated trajectory
+   * @param footprint The robot footprint
    */
-  void visualize_trajectories(
-      const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const double r, const double g,
-      const double b, const ros::Publisher &pub);
+  visualization_msgs::Marker create_marker_msg(
+      const int id, const double scale, const std_msgs::ColorRGBA color, const std::vector<State> &trajectory,
+      const geometry_msgs::PolygonStamped &footprint = geometry_msgs::PolygonStamped());
 
   /**
    * @brief Publish selected trajectory
    * @param trajectory Selected trajectry
-   * @param r Rgb color chart number of red
-   * @param g Rgb color chart number of green
-   * @param b Rgb color chart number of blue
    * @param pub Publisher of selected trajectory
    */
-  void visualize_trajectory(
-      const std::vector<State> &trajectory, const double r, const double g, const double b, const ros::Publisher &pub);
+  void visualize_trajectory(const std::vector<State> &trajectory, const ros::Publisher &pub);
+
+  /**
+   * @brief Publish candidate trajectories
+   * @param trajectories Candidated trajectories
+   * @param pub Publisher of candidate trajectories
+   */
+  void visualize_trajectories(
+      const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const ros::Publisher &pub);
 
   /**
    * @brief Publish predicted footprints
    * @param trajectory Selected trajectry
-   * @param r Rgb color chart number of red
-   * @param g Rgb color chart number of green
-   * @param b Rgb color chart number of blue
    * @param pub Publisher of predicted footprints
    */
-  void visualize_footprints(
-      const std::vector<State> &trajectory, const double r, const double g, const double b, const ros::Publisher &pub);
+  void visualize_footprints(const std::vector<State> &trajectory, const ros::Publisher &pub);
 
   /**
    * @brief Execute dwa planning
@@ -418,6 +419,7 @@ protected:
   double obs_range_;
   double robot_radius_;
   double footprint_padding_;
+  double v_path_width_;
   bool use_footprint_;
   bool use_scan_as_input_;
   bool use_path_cost_;

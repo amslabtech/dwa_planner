@@ -8,6 +8,7 @@
     <arg name="global_frame" default="map"/>
     <arg name="subscribe_count_th" default="3"/>
     <arg name="sleep_time_after_finish" default="0.5"/>
+    <arg name="v_path_width" default="0.05"/>
     <arg name="use_scan_as_input" default="false"/>
     <arg name="use_footprint" default="false"/>
     <arg name="use_path_cost" default="false"/>
@@ -31,6 +32,7 @@
         <rosparam command="load" file="$(arg dwa_param)"/>
         <param name="HZ" value="$(arg hz)"/>
         <param name="GLOBAL_FRAME" value="$(arg global_frame)"/>
+        <param name="V_PATH_WIDTH" value="$(arg v_path_width)"/>
         <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <param name="USE_FOOTPRINT" value="$(arg use_footprint)"/>
         <param name="USE_PATH_COST" value="$(arg use_path_cost)"/>
