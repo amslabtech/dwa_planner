@@ -124,6 +124,17 @@ DWAPlanner::State::State(const double x, const double y, const double yaw, const
 
 DWAPlanner::Window::Window(void) : min_velocity_(0.0), max_velocity_(0.0), min_yawrate_(0.0), max_yawrate_(0.0) {}
 
+void DWAPlanner::Window::show(void)
+{
+  ROS_INFO_STREAM("Window:");
+  ROS_INFO_STREAM("\tVelocity:");
+  ROS_INFO_STREAM("\t\tmax: " << max_velocity_);
+  ROS_INFO_STREAM("\t\tmin: " << min_velocity_);
+  ROS_INFO_STREAM("\tYawrate:");
+  ROS_INFO_STREAM("\t\tmax: " << max_yawrate_);
+  ROS_INFO_STREAM("\t\tmin: " << min_yawrate_);
+}
+
 DWAPlanner::Cost::Cost(void) : obs_cost_(0.0), to_goal_cost_(0.0), speed_cost_(0.0), path_cost_(0.0), total_cost_(0.0)
 {
 }
