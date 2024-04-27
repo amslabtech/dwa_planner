@@ -402,6 +402,7 @@ protected:
   double max_acceleration_;
   double max_deceleration_;
   double max_d_yawrate_;
+  double sim_period_;
   double angle_resolution_;
   double predict_time_;
   double sleep_time_after_finish_;
