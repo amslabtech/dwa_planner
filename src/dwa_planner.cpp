@@ -42,6 +42,7 @@ DWAPlanner::DWAPlanner(void)
   local_nh_.param<double>("OBS_RANGE", obs_range_, {2.5});
   local_nh_.param<double>("ROBOT_RADIUS", robot_radius_, {0.1});
   local_nh_.param<double>("FOOTPRINT_PADDING", footprint_padding_, {0.01});
+  local_nh_.param<double>("V_PATH_WIDTH", v_path_width_, {0.05});
   local_nh_.param<bool>("USE_SCAN_AS_INPUT", use_scan_as_input_, {false});
   local_nh_.param<bool>("USE_FOOTPRINT", use_footprint_, {false});
   local_nh_.param<bool>("USE_PATH_COST", use_path_cost_, {false});
@@ -493,10 +494,12 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
     trajectories.push_back(best_traj);
   }
 
-  visualize_trajectory(best_traj.first, 1, 0, 0, selected_trajectory_pub_);
-  visualize_trajectories(trajectories, 0, 1, 0, candidate_trajectories_pub_);
-  if (use_footprint_)
-    visualize_footprints(best_traj.first, 0, 0, 1, predict_footprints_pub_);
+  for (int i = 0; i < trajectories_size; i++)
+    trajectories.push_back(trajectories.front());
+
+  visualize_trajectory(best_traj.first, selected_trajectory_pub_);
+  visualize_trajectories(trajectories, candidate_trajectories_pub_);
+  visualize_footprints(best_traj.first, predict_footprints_pub_);
 
   use_speed_cost_ = false;
 
@@ -688,7 +691,23 @@ float DWAPlanner::calc_dist_from_robot(const geometry_msgs::Point &obstacle, con
 
 geometry_msgs::PolygonStamped DWAPlanner::move_footprint(const State &target_pose)
 {
-  geometry_msgs::PolygonStamped footprint = footprint_;
+  geometry_msgs::PolygonStamped footprint;
+  if (use_footprint_)
+  {
+    footprint = footprint_;
+  }
+  else
+  {
+    const int plot_num = 20;
+    for (int i = 0; i < plot_num; i++)
+    {
+      geometry_msgs::Point32 point;
+      point.x = (robot_radius_ + footprint_padding_) * cos(2 * M_PI * i / plot_num);
+      point.y = robot_radius_ * sin(2 * M_PI * i / plot_num);
+      footprint.polygon.points.push_back(point);
+    }
+  }
+
   footprint.header.stamp = ros::Time::now();
 
   for (auto &point : footprint.polygon.points)
@@ -819,111 +838,88 @@ void DWAPlanner::raycast(const nav_msgs::OccupancyGrid &map)
   }
 }
 
+visualization_msgs::Marker DWAPlanner::create_marker_msg(
+    const int id, const double scale, const std_msgs::ColorRGBA color, const std::vector<State> &trajectory,
+    const geometry_msgs::PolygonStamped &footprint)
+{
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = robot_frame_;
+  marker.header.stamp = ros::Time::now();
+  marker.id = id;
+  marker.type = visualization_msgs::Marker::LINE_STRIP;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.pose.orientation.w = 1;
+  marker.scale.x = scale;
+  marker.color = color;
+  marker.color.a = 0.8;
+  marker.lifetime = ros::Duration();
+
+  geometry_msgs::Point p;
+  if (footprint.polygon.points.empty())
+  {
+    for (const auto &point : trajectory)
+    {
+      p.x = point.x_;
+      p.y = point.y_;
+      marker.points.push_back(p);
+    }
+  }
+  else
+  {
+    for (const auto &point : footprint.polygon.points)
+    {
+      p.x = point.x;
+      p.y = point.y;
+      marker.points.push_back(p);
+    }
+    p.x = footprint.polygon.points.front().x;
+    p.y = footprint.polygon.points.front().y;
+    marker.points.push_back(p);
+  }
+
+  return marker;
+}
+
+void DWAPlanner::visualize_trajectory(const std::vector<State> &trajectory, const ros::Publisher &pub)
+{
+  std_msgs::ColorRGBA color;
+  color.r = 1.0;
+  visualization_msgs::Marker v_trajectory = create_marker_msg(0, v_path_width_, color, trajectory);
+  pub.publish(v_trajectory);
+}
+
 void DWAPlanner::visualize_trajectories(
-    const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const double r, const double g,
-    const double b, const ros::Publisher &pub)
+    const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const ros::Publisher &pub)
 {
   visualization_msgs::MarkerArray v_trajectories;
-  for (int count = 0; count < trajectories.size(); count++)
+  for (int i = 0; i < trajectories.size(); i++)
   {
-    visualization_msgs::Marker v_trajectory;
-    v_trajectory.header.frame_id = robot_frame_;
-    v_trajectory.header.stamp = ros::Time::now();
-    if (trajectories[count].second)
+    std_msgs::ColorRGBA color;
+    if (trajectories[i].second)
     {
-      v_trajectory.color.r = r;
-      v_trajectory.color.g = g;
-      v_trajectory.color.b = b;
+      color.g = 1.0;
     }
     else
     {
-      v_trajectory.color.r = 0.5;
-      v_trajectory.color.g = 0.0;
-      v_trajectory.color.b = 0.5;
+      color.r = 0.5;
+      color.b = 0.5;
     }
-    v_trajectory.color.a = 0.8;
-    v_trajectory.ns = pub.getTopic();
-    v_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
-    v_trajectory.action = visualization_msgs::Marker::ADD;
-    v_trajectory.lifetime = ros::Duration();
-    v_trajectory.id = count;
-    v_trajectory.scale.x = 0.02;
-    geometry_msgs::Pose pose;
-    pose.orientation.w = 1;
-    v_trajectory.pose = pose;
-    geometry_msgs::Point p;
-    for (const auto &pose : trajectories[count].first)
-    {
-      p.x = pose.x_;
-      p.y = pose.y_;
-      v_trajectory.points.push_back(p);
-    }
+    visualization_msgs::Marker v_trajectory = create_marker_msg(i, v_path_width_*0.4, color, trajectories[i].first);
     v_trajectories.markers.push_back(v_trajectory);
   }
   pub.publish(v_trajectories);
 }
 
-void DWAPlanner::visualize_trajectory(
-    const std::vector<State> &trajectory, const double r, const double g, const double b, const ros::Publisher &pub)
-{
-  visualization_msgs::Marker v_trajectory;
-  v_trajectory.header.frame_id = robot_frame_;
-  v_trajectory.header.stamp = ros::Time::now();
-  v_trajectory.color.r = r;
-  v_trajectory.color.g = g;
-  v_trajectory.color.b = b;
-  v_trajectory.color.a = 0.8;
-  v_trajectory.ns = pub.getTopic();
-  v_trajectory.type = visualization_msgs::Marker::LINE_STRIP;
-  v_trajectory.action = visualization_msgs::Marker::ADD;
-  v_trajectory.lifetime = ros::Duration();
-  v_trajectory.scale.x = 0.05;
-  geometry_msgs::Pose pose;
-  pose.orientation.w = 1;
-  v_trajectory.pose = pose;
-  geometry_msgs::Point p;
-  for (const auto &pose : trajectory)
-  {
-    p.x = pose.x_;
-    p.y = pose.y_;
-    v_trajectory.points.push_back(p);
-  }
-  pub.publish(v_trajectory);
-}
-
 void DWAPlanner::visualize_footprints(
-    const std::vector<State> &trajectory, const double r, const double g, const double b, const ros::Publisher &pub)
+    const std::vector<State> &trajectory, const ros::Publisher &pub)
 {
+  std_msgs::ColorRGBA color;
+  color.b = 1.0;
   visualization_msgs::MarkerArray v_footprints;
   for (int i = 0; i < trajectory.size(); i++)
   {
-    visualization_msgs::Marker v_footprint;
-    v_footprint.header.frame_id = robot_frame_;
-    v_footprint.header.stamp = ros::Time::now();
-    v_footprint.color.r = r;
-    v_footprint.color.g = g;
-    v_footprint.color.b = b;
-    v_footprint.color.a = 0.8;
-    v_footprint.ns = pub.getTopic();
-    v_footprint.type = visualization_msgs::Marker::LINE_STRIP;
-    v_footprint.action = visualization_msgs::Marker::ADD;
-    v_footprint.lifetime = ros::Duration();
-    v_footprint.id = i;
-    v_footprint.scale.x = 0.01;
-    geometry_msgs::Pose pose;
-    pose.orientation.w = 1;
-    v_footprint.pose = pose;
-    geometry_msgs::Point p;
     const geometry_msgs::PolygonStamped footprint = move_footprint(trajectory[i]);
-    for (const auto &point : footprint.polygon.points)
-    {
-      p.x = point.x;
-      p.y = point.y;
-      v_footprint.points.push_back(p);
-    }
-    p.x = footprint.polygon.points.front().x;
-    p.y = footprint.polygon.points.front().y;
-    v_footprint.points.push_back(p);
+    visualization_msgs::Marker v_footprint = create_marker_msg(i, v_path_width_*0.2, color, trajectory, footprint);
     v_footprints.markers.push_back(v_footprint);
   }
   pub.publish(v_footprints);
