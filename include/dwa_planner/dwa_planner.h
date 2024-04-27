@@ -431,6 +431,7 @@ protected:
   bool has_reached_;
   int velocity_samples_;
   int yawrate_samples_;
+  int sim_time_samples_;
   int subscribe_count_th_;
   int odom_not_subscribe_count_;
   int local_map_not_subscribe_count_;
