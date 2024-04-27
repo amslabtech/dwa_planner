@@ -355,8 +355,8 @@ public:
    * @param footprint The robot footprint
    */
   visualization_msgs::Marker create_marker_msg(
-    const int id, const double scale, const std_msgs::ColorRGBA color, const std::vector<State> &trajectory,
-    const geometry_msgs::PolygonStamped &footprint=geometry_msgs::PolygonStamped());
+      const int id, const double scale, const std_msgs::ColorRGBA color, const std::vector<State> &trajectory,
+      const geometry_msgs::PolygonStamped &footprint = geometry_msgs::PolygonStamped());
 
   /**
    * @brief Publish selected trajectory

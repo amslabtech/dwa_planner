@@ -904,14 +904,13 @@ void DWAPlanner::visualize_trajectories(
       color.r = 0.5;
       color.b = 0.5;
     }
-    visualization_msgs::Marker v_trajectory = create_marker_msg(i, v_path_width_*0.4, color, trajectories[i].first);
+    visualization_msgs::Marker v_trajectory = create_marker_msg(i, v_path_width_ * 0.4, color, trajectories[i].first);
     v_trajectories.markers.push_back(v_trajectory);
   }
   pub.publish(v_trajectories);
 }
 
-void DWAPlanner::visualize_footprints(
-    const std::vector<State> &trajectory, const ros::Publisher &pub)
+void DWAPlanner::visualize_footprints(const std::vector<State> &trajectory, const ros::Publisher &pub)
 {
   std_msgs::ColorRGBA color;
   color.b = 1.0;
@@ -919,7 +918,7 @@ void DWAPlanner::visualize_footprints(
   for (int i = 0; i < trajectory.size(); i++)
   {
     const geometry_msgs::PolygonStamped footprint = move_footprint(trajectory[i]);
-    visualization_msgs::Marker v_footprint = create_marker_msg(i, v_path_width_*0.2, color, trajectory, footprint);
+    visualization_msgs::Marker v_footprint = create_marker_msg(i, v_path_width_ * 0.2, color, trajectory, footprint);
     v_footprints.markers.push_back(v_footprint);
   }
   pub.publish(v_footprints);
