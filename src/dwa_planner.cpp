@@ -48,6 +48,7 @@ DWAPlanner::DWAPlanner(void)
   local_nh_.param<int>("SUBSCRIBE_COUNT_TH", subscribe_count_th_, {3});
   local_nh_.param<int>("VELOCITY_SAMPLES", velocity_samples_, {3});
   local_nh_.param<int>("YAWRATE_SAMPLES", yawrate_samples_, {20});
+  local_nh_.param<int>("SIM_TIME_SAMPLES", sim_time_samples_, {10});
 
   target_velocity_ = std::min(target_velocity_, max_velocity_);
 
@@ -87,6 +88,7 @@ DWAPlanner::DWAPlanner(void)
   ROS_INFO_STREAM("SUBSCRIBE_COUNT_TH: " << subscribe_count_th_);
   ROS_INFO_STREAM("VELOCITY_SAMPLES: " << velocity_samples_);
   ROS_INFO_STREAM("YAWRATE_SAMPLES: " << yawrate_samples_);
+  ROS_INFO_STREAM("SIM_TIME_SAMPLES: " << sim_time_samples_);
 
   velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
   candidate_trajectories_pub_ = local_nh_.advertise<visualization_msgs::MarkerArray>("candidate_trajectories", 1);
@@ -245,9 +247,8 @@ DWAPlanner::dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std:
 {
   Cost min_cost(0.0, 0.0, 0.0, 0.0, 1e6);
   const Window dynamic_window = calc_dynamic_window();
-  const size_t trajectory_size = predict_time_ / dt_;
   std::vector<State> best_traj;
-  best_traj.resize(trajectory_size);
+  best_traj.resize(sim_time_samples_);
   std::vector<Cost> costs;
   const size_t costs_size = velocity_samples_ * (yawrate_samples_ + 1);
   costs.reserve(costs_size);
@@ -602,11 +603,10 @@ float DWAPlanner::calc_dist_to_path(const State state)
 
 std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double velocity, const double yawrate)
 {
-  const size_t trajectory_size = predict_time_ / dt_;
   std::vector<State> trajectory;
-  trajectory.resize(trajectory_size);
+  trajectory.resize(sim_time_samples_);
   State state;
-  for (int i = 0; i < trajectory_size; i++)
+  for (int i = 0; i < sim_time_samples_; i++)
   {
     motion(state, velocity, yawrate);
     trajectory[i] = state;
@@ -618,11 +618,10 @@ std::vector<DWAPlanner::State> DWAPlanner::generate_trajectory(const double yawr
 {
   const double target_direction = atan2(goal.y(), goal.x()) > 0 ? sim_direction_ : -sim_direction_;
   const double predict_time = target_direction / (yawrate + DBL_EPSILON);
-  const size_t trajectory_size = predict_time / dt_;
   std::vector<State> trajectory;
-  trajectory.resize(trajectory_size);
+  trajectory.resize(sim_time_samples_);
   State state;
-  for (int i = 0; i < trajectory_size; i++)
+  for (int i = 0; i < sim_time_samples_; i++)
   {
     motion(state, 0.0, yawrate);
     trajectory[i] = state;
@@ -766,9 +765,10 @@ bool DWAPlanner::is_inside_of_triangle(const geometry_msgs::Point &target_point,
 
 void DWAPlanner::motion(State &state, const double velocity, const double yawrate)
 {
-  state.yaw_ += yawrate * dt_;
-  state.x_ += velocity * std::cos(state.yaw_) * dt_;
-  state.y_ += velocity * std::sin(state.yaw_) * dt_;
+  const double sim_time_step = predict_time_ / static_cast<double>(sim_time_samples_);
+  state.yaw_ += yawrate * sim_time_step;
+  state.x_ += velocity * std::cos(state.yaw_) * sim_time_step;
+  state.y_ += velocity * std::sin(state.yaw_) * sim_time_step;
   state.velocity_ = velocity;
   state.yawrate_ = yawrate;
 }
