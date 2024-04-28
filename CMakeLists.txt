@@ -128,6 +128,7 @@ include_directories(
 # )
 add_library(dwa_planner_lib
   src/dwa_planner.cpp
+  src/parameters.cpp
 )
 
 ## Add cmake target dependencies of the library

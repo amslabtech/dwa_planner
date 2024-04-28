@@ -148,6 +148,16 @@ public:
   void process(void);
 
   /**
+   * @brief Load parameters
+   */
+  void load_params(void);
+
+  /**
+   * @brief Print parameters
+   */
+  void print_params(void);
+
+  /**
    * @brief A callback to hanldle buffering local goal messages
    */
   void goal_callback(const geometry_msgs::PoseStampedConstPtr &msg);
