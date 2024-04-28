@@ -1,5 +1,8 @@
 // Copyright 2020 amsl
 
+#include <algorithm>
+#include <string>
+
 #include "dwa_planner/dwa_planner.h"
 
 void DWAPlanner::load_params(void)
