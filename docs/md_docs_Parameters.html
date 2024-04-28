@@ -25,6 +25,30 @@ $(function() {
 Planner Parameters</h1>
 <p>(config/dwa_param.yaml) </p>
 <h2><a class="anchor" id="autotoc_md2"></a>
+Target Parameters</h2>
+<ul>
+<li>~&lt;name&gt;/<b>TARGET_VELOCITY</b> (double, default: <code>0.55</code> [m/s]):<br  />
+ The max target velocity of robot</li>
+</ul>
+<h2><a class="anchor" id="autotoc_md3"></a>
+Simulation Parameters</h2>
+<ul>
+<li>~&lt;name&gt;/<b>PREDICT_TIME</b> (double, default: <code>3.0</code> [s]):<br  />
+ The amount of time to simulate trajectories</li>
+<li>~&lt;name&gt;/<b>SIM_TIME_SAMPLES</b> (int, default: <code>10</code>):<br  />
+ The number of samples to use when simulating trajectories</li>
+<li>~&lt;name&gt;/<b>SIM_PERIOD</b> (double, default: <code>0.1</code> [s]):<br  />
+ The simulation time related to the dynamic window. The product of this parameter and the acceleration is the amount of movement of the dynamic window.</li>
+<li>~&lt;name&gt;/<b>SIM_DIRECTION</b> (double, default: <code>1.57</code> [rad]):<br  />
+ The simulated turning angle when turning on the spot</li>
+<li>~&lt;name&gt;/<b>SLOW_VELOCITY_TH</b> (double, default: <code>0.1</code> [m/s]):<br  />
+ The threshold for slow velocity. If the robot's velocity is less than this value, yawrate less than <code>MIN_YAWRATE</code> are not sampled.</li>
+<li>~&lt;name&gt;/<b>VELOCITY_SAMPLES</b> (int, default: <code>3</code>):<br  />
+ The number of samples to use when searching for the best velocity</li>
+<li>~&lt;name&gt;/<b>YAWRATE_SAMPLES</b> (int, default: <code>20</code>):<br  />
+ The number of samples to use when searching for the best yawrate</li>
+</ul>
+<h2><a class="anchor" id="autotoc_md4"></a>
 Cost Parameters</h2>
 <ul>
 <li>~&lt;name&gt;/<b>OBSTACLE_COST_GAIN</b> (double, default: <code>1.0</code>):<br  />
@@ -35,30 +59,12 @@ Cost Parameters</h2>
  The weighting for how large the speed cost should be. Multiplied by the normalized speed cost. When the robot is fast, the cost is low.</li>
 <li>~&lt;name&gt;/<b>PATH_COST_GAIN</b> (double, default: <code>0.4</code>):<br  />
  The weighting for how large the path cost should be. Multiplied by the normalized path cost. When the robot is close to the path, the cost is low.</li>
-<li>~&lt;name&gt;/<b>TARGET_VELOCITY</b> (double, default: <code>0.55</code> [m/s]):<br  />
- The max target velocity of robot</li>
 <li>~&lt;name&gt;/<b>ANGLE_RESOLUTION</b> (double, default: <code>0.087</code> [rad]):<br  />
  Search obstacle by this resolution</li>
 <li>~&lt;name&gt;/<b>OBS_RANGE</b> (double, default: <code>2.5</code> [m]):<br  />
  The maximum measurement distance to be considered when calculating obstacle cost</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md3"></a>
-Simulation Parameters</h2>
-<ul>
-<li>~&lt;name&gt;/<b>PREDICT_TIME</b> (double, default: <code>3.0</code> [s]):<br  />
- The amount of time to simulate trajectories</li>
-<li>~&lt;name&gt;/<b>DT</b> (double, default: <code>0.1</code> [s]):<br  />
- The simulation time-step</li>
-<li>~&lt;name&gt;/<b>SIM_DIRECTION</b> (double, default: <code>1.57</code> [rad]):<br  />
- The simulated turning angle when turning on the spot</li>
-<li>~&lt;name&gt;/<b>SLOW_VELOCITY_TH</b> (double, default: <code>0.1</code> [m/s]):<br  />
- The threshold for slow velocity. If the robot's velocity is less than this value, yawrate less than <code>MIN_YAWRATE</code> are not sampled.</li>
-<li>~&lt;name&gt;/<b>VELOCITY_SAMPLES</b> (double, default: <code>3</code>):<br  />
- The number of samples to use when searching for the best velocity</li>
-<li>~&lt;name&gt;/<b>YAWRATE_SAMPLES</b> (double, default: <code>20</code>):<br  />
- The number of samples to use when searching for the best yawrate</li>
-</ul>
-<h2><a class="anchor" id="autotoc_md4"></a>
+<h2><a class="anchor" id="autotoc_md5"></a>
 Goal Tolerance Parameters</h2>
 <ul>
 <li>~&lt;name&gt;/<b>GOAL_THRESHOLD</b> (double, default: <code>0.1</code> [m]):<br  />
@@ -66,22 +72,22 @@ Goal Tolerance Parameters</h2>
 <li>~&lt;name&gt;/<b>TURN_DIRECTION_THRESHOLD</b> (double, default: <code>0.1</code> [rad]):<br  />
  The tolerance for the robot in yaw/rotation when achieving its goal</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md5"></a>
+<h2><a class="anchor" id="autotoc_md6"></a>
 Other Parameters</h2>
 <ul>
 <li>~&lt;name&gt;/<b>ANGLE_TO_GOAL_TH</b> (double, default: <code>pi</code> [rad]):<br  />
  The absolute angle to the goal that is considered as the goal direction. If the angle to the goal is less than this value, the robot turn to the goal.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md6"></a>
+<h1><a class="anchor" id="autotoc_md7"></a>
 Robot Parameters</h1>
 <p>(config/robot_param.yaml) </p>
-<h2><a class="anchor" id="autotoc_md7"></a>
+<h2><a class="anchor" id="autotoc_md8"></a>
 Frame Parameter</h2>
 <ul>
 <li>~&lt;name&gt;/<b>ROBOT_FRAME</b> (string, default: <code>base_link</code>):<br  />
  The coordinate frame of robot</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md8"></a>
+<h2><a class="anchor" id="autotoc_md9"></a>
 Robot Size Parameters</h2>
 <ul>
 <li>~&lt;name&gt;/<b>ROBOT_RADIUS</b> (double, default: <code>0.1</code> [m]):<br  />
@@ -89,7 +95,7 @@ Robot Size Parameters</h2>
 <li>~&lt;name&gt;/<b>FOOTPRINT_PADDING</b> (double, default: <code>0.01</code> [m]):<br  />
  If localmap contains padding, you should set this parameter to 0.0.</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md9"></a>
+<h2><a class="anchor" id="autotoc_md10"></a>
 Robot Configuration Parameters</h2>
 <ul>
 <li>~&lt;name&gt;/<b>MAX_VELOCITY</b> (double, default: <code>1.0</code> [m/s]):<br  />
@@ -111,15 +117,9 @@ Robot Configuration Parameters</h2>
 <li>~&lt;name&gt;/<b>MAX_D_YAWRATE</b> (double, default: <code>3.2</code> [rad/s^2]):<br  />
  The maximum yawrate acceleration of the robot</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md10"></a>
+<h1><a class="anchor" id="autotoc_md11"></a>
 Other Parameters</h1>
 <p>(launch/local_planner.launch) </p>
-<h2><a class="anchor" id="autotoc_md11"></a>
-Frame Parameter</h2>
-<ul>
-<li>~&lt;name&gt;/<b>GLOBAL_FRAME</b> (string, default: <code>map</code>):<br  />
- The coordinate frame of map</li>
-</ul>
 <h2><a class="anchor" id="autotoc_md12"></a>
 Main Loop Parameter</h2>
 <ul>
@@ -127,26 +127,38 @@ Main Loop Parameter</h2>
  The rate of main loop</li>
 </ul>
 <h2><a class="anchor" id="autotoc_md13"></a>
+Frame Parameter</h2>
+<ul>
+<li>~&lt;name&gt;/<b>GLOBAL_FRAME</b> (string, default: <code>map</code>):<br  />
+ The coordinate frame of map</li>
+</ul>
+<h2><a class="anchor" id="autotoc_md14"></a>
 Topic Parameter</h2>
 <ul>
 <li>~&lt;name&gt;/<b>SUBSCRIBE_COUNT_TH</b> (double, default: <code>3</code>):<br  />
  The allowable number of control loops if topic is not reached. If the number exceeds this value, set velocity and yawrate to 0.0.</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md14"></a>
+<h2><a class="anchor" id="autotoc_md15"></a>
 Goal Parameter</h2>
 <ul>
 <li>~&lt;name&gt;/<b>SLEEP_TIME_AFTER_FINISH</b> (double, default: <code>0.5</code> [s]):<br  />
  The sleep time after reaching the goal. Prevent bugs that occur on other nodes by not continuously publishing the finish flag when the goal is reached.</li>
 </ul>
-<h2><a class="anchor" id="autotoc_md15"></a>
+<h2><a class="anchor" id="autotoc_md16"></a>
+Visualization Parameter</h2>
+<ul>
+<li>~&lt;name&gt;/<b>V_PATH_WIDTH</b> (double, default: <code>0.05</code> [m]):<br  />
+ The width of the local path visualization. The selected trajectory's width is this value. The candidate trajectories's width is 0.4 times this value. The footprint frame visualization's width is 0.2 times this value.</li>
+</ul>
+<h2><a class="anchor" id="autotoc_md17"></a>
 Option</h2>
 <ul>
-<li>~&lt;name&gt;/<b>USE_SCAN_AS_INPUT</b> (bool, default: <code>false</code>):<br  />
- If scan is used instead of localmap, set to true.</li>
 <li>~&lt;name&gt;/<b>USE_FOOTPRINT</b> (bool, default: <code>false</code>):<br  />
  If footprint is used, set to true.</li>
 <li>~&lt;name&gt;/<b>USE_PATH_COST</b> (bool, default: <code>false</code>):<br  />
- If path cost is used, set to true. </li>
+ If path cost is used, set to true.</li>
+<li>~&lt;name&gt;/<b>USE_SCAN_AS_INPUT</b> (bool, default: <code>false</code>):<br  />
+ If scan is used instead of localmap, set to true. </li>
 </ul>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
@@ -155,7 +167,7 @@ Option</h2>
 <hr size="1"><div style="align: right;">
 <a href="http://wiki.ros.org/dwa_planner">dwa_planner</a><br />
 Author(s): </br />
-<small>autogenerated on Sat Apr 27 2024 01:49:32</small>
+<small>autogenerated on Sun Apr 28 2024 18:12:25</small>
 </div>
 </body>
 </html>

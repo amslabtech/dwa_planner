@@ -17,6 +17,7 @@
 ## Necessary topics
 - /local_map (`nav_msgs/OccupancyGrid`)
   - robot-centered costmap
+  - the cells with an occupancy probability of 100 are considered as obstacles
 - /move_base_simple/goal (`geometry_msgs/PoseStamped`)
   - goal pose
 - /odom (`nav_msgs/Odometry`)
@@ -33,7 +34,7 @@
 - /footprint (`geometry_msgs/PolygonStamped`)
   - robot footprint
   - If robot footprint is used, set `USE_FOOTPRINT` to `true`
-  - `footprint_publisher` node in `amsl_navigation_utils` repository publishes rectangular footprint
+  - `footprint_publisher` node in [amsl_navigation_utils](https://github.com/amslabtech/amsl_navigation_utils.git) repository publishes rectangular footprint
 - /path (`nav_msgs/Path`)
   - a part of the global path (edge)
   - for path cost
