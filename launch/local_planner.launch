@@ -4,49 +4,53 @@
     <arg name="ns" default="local_planner"/>
 
     <!-- param -->
+    <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
+    <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
     <arg name="hz" default="20"/>
     <arg name="global_frame" default="map"/>
     <arg name="subscribe_count_th" default="3"/>
     <arg name="sleep_time_after_finish" default="0.5"/>
     <arg name="v_path_width" default="0.05"/>
-    <arg name="use_scan_as_input" default="false"/>
     <arg name="use_footprint" default="false"/>
     <arg name="use_path_cost" default="false"/>
-    <arg name="robot_param" default="$(find dwa_planner)/config/robot_param.yaml"/>
-    <arg name="dwa_param" default="$(find dwa_planner)/config/dwa_param.yaml"/>
+    <arg name="use_scan_as_input" default="false"/>
     <!-- topic name -->
+    <!-- published topics -->
     <arg name="cmd_vel" default="/cmd_vel"/>
-    <arg name="dist_to_goal_th" default="/dist_to_goal_th"/>
-    <arg name="path" default="/path"/>
-    <arg name="footprint" default="/footprint"/>
-    <arg name="local_goal" default="/move_base_simple/goal"/>
+    <!-- subscribed topics -->
     <arg name="local_map" default="/local_map"/>
+    <arg name="local_goal" default="/move_base_simple/goal"/>
     <arg name="odom" default="/odom"/>
+    <arg name="dist_to_goal_th" default="/dist_to_goal_th"/>
     <arg name="scan" default="/scan"/>
+    <arg name="footprint" default="/footprint"/>
+    <arg name="path" default="/path"/>
     <arg name="target_velocity" default="/target_velocity"/>
 
     <!-- run dwa_planner node -->
     <node pkg="dwa_planner" type="dwa_planner" name="dwa_planner" ns="$(arg ns)">
         <!-- param -->
-        <rosparam command="load" file="$(arg robot_param)"/>
         <rosparam command="load" file="$(arg dwa_param)"/>
+        <rosparam command="load" file="$(arg robot_param)"/>
         <param name="HZ" value="$(arg hz)"/>
         <param name="GLOBAL_FRAME" value="$(arg global_frame)"/>
-        <param name="V_PATH_WIDTH" value="$(arg v_path_width)"/>
-        <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
-        <param name="USE_FOOTPRINT" value="$(arg use_footprint)"/>
-        <param name="USE_PATH_COST" value="$(arg use_path_cost)"/>
         <param name="SUBSCRIBE_COUNT_TH" value="$(arg subscribe_count_th)"/>
         <param name="SLEEP_TIME_AFTER_FINISH" value="$(arg sleep_time_after_finish)"/>
+        <param name="V_PATH_WIDTH" value="$(arg v_path_width)"/>
+        <param name="USE_FOOTPRINT" value="$(arg use_footprint)"/>
+        <param name="USE_PATH_COST" value="$(arg use_path_cost)"/>
+        <param name="USE_SCAN_AS_INPUT" value="$(arg use_scan_as_input)"/>
         <!-- topic name -->
+        <!-- published topics -->
         <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
-        <remap from="/dist_to_goal_th" to="$(arg dist_to_goal_th)"/>
-        <remap from="/path" to="$(arg path)"/>
-        <remap from="/footprint" to="$(arg footprint)"/>
-        <remap from="/move_base_simple/goal" to="$(arg local_goal)"/>
+        <!-- subscribed topics -->
         <remap from="/local_map" to="$(arg local_map)"/>
+        <remap from="/move_base_simple/goal" to="$(arg local_goal)"/>
         <remap from="/odom" to="$(arg odom)"/>
+        <remap from="/dist_to_goal_th" to="$(arg dist_to_goal_th)"/>
         <remap from="/scan" to="$(arg scan)"/>
+        <remap from="/footprint" to="$(arg footprint)"/>
+        <remap from="/path" to="$(arg path)"/>
         <remap from="/target_velocity" to="$(arg target_velocity)"/>
     </node>
 </launch>

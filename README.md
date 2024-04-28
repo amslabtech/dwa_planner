@@ -11,7 +11,7 @@ The API documentation is available at [https://amslabtech.github.io/dwa_planner/
 
 **Note: This simulator is not provided.**
 
-![demo1](docs/images/demo_dwa.gif)
+![demo 1](docs/images/dwa_planner_demo_1.gif)
 
 ## Environment
 - Ubuntu 20.04
@@ -53,14 +53,13 @@ export TURTLEBOT3_MODEL=burger
 roslaunch turtlebot3_navigation turtlebot3_navigation.launch
 export TURTLEBOT3_MODEL=burger
 roslaunch turtlebot3_gazebo turtlebot3_world.launch
-roslaunch dwa_planner local_planner.launch use_scan_as_input:=True
+roslaunch dwa_planner local_planner.launch use_scan_as_input:=True v_path_width:=0.02
 ```
-![demo3](docs/images/demo_dwa_3.gif)
+![demo 2](docs/images/dwa_planner_demo_2.gif)
 
 
 ## Node I/O
-
-![dwa_planner I/O diagram](docs/images/dwa_planner_io.png)
+![Node I/O](docs/images/dwa_planner_io.png)
 
 ### Published/Subscribed Topics
 Access [here](docs/Topics.md)
