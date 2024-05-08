@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  demo:
+    container_name: dwa_planner
+    build:
+      context: .
+      dockerfile: Dockerfile
+    tty: true
+    environment:
+      DISPLAY: $DISPLAY
+      TURTLEBOT3_MODEL: burger
+    volumes:
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+    command: /bin/bash -c "source /opt/ros/noetic/setup.bash && source ~/ws/devel/setup.bash && roslaunch dwa_planner demo.launch"
