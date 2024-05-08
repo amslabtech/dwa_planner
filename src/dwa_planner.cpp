@@ -105,7 +105,7 @@ void DWAPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
 void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   if (use_scan_as_input_)
-    scan_to_obs(*msg);
+    create_obs_list(*msg);
   scan_not_subscribe_count_ = 0;
   scan_updated_ = true;
 }
@@ -113,7 +113,7 @@ void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr &msg)
 void DWAPlanner::local_map_callback(const nav_msgs::OccupancyGridConstPtr &msg)
 {
   if (!use_scan_as_input_)
-    raycast(*msg);
+    create_obs_list(*msg);
   local_map_not_subscribe_count_ = 0;
   local_map_updated_ = true;
 }
@@ -712,7 +712,7 @@ void DWAPlanner::motion(State &state, const double velocity, const double yawrat
   state.yawrate_ = yawrate;
 }
 
-void DWAPlanner::scan_to_obs(const sensor_msgs::LaserScan &scan)
+void DWAPlanner::create_obs_list(const sensor_msgs::LaserScan &scan)
 {
   obs_list_.poses.clear();
   float angle = scan.angle_min;
@@ -733,7 +733,7 @@ void DWAPlanner::scan_to_obs(const sensor_msgs::LaserScan &scan)
   }
 }
 
-void DWAPlanner::raycast(const nav_msgs::OccupancyGrid &map)
+void DWAPlanner::create_obs_list(const nav_msgs::OccupancyGrid &map)
 {
   obs_list_.poses.clear();
   const double max_search_dist = hypot(map.info.origin.position.x, map.info.origin.position.y);
