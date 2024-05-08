@@ -434,9 +434,6 @@ protected:
   bool use_scan_as_input_;
   bool use_path_cost_;
   bool use_speed_cost_;
-  bool footprint_subscribed_;
-  bool goal_subscribed_;
-  bool edge_on_global_path_subscribed_;
   bool odom_updated_;
   bool local_map_updated_;
   bool scan_updated_;
@@ -466,10 +463,10 @@ protected:
   ros::Subscriber target_velocity_sub_;
 
   geometry_msgs::Twist current_cmd_vel_;
-  geometry_msgs::PoseStamped goal_msg_;
+  std::optional<geometry_msgs::PoseStamped> goal_msg_;
   geometry_msgs::PoseArray obs_list_;
-  geometry_msgs::PolygonStamped footprint_;
-  std::vector<geometry_msgs::PoseStamped> edge_points_on_path_;
+  std::optional<geometry_msgs::PolygonStamped> footprint_;
+  std::optional<nav_msgs::Path> edge_points_on_path_;
 
   std_msgs::Bool has_finished_;
 
