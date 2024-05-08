@@ -25,8 +25,8 @@ git clone https://github.com/amslabtech/dwa_planner.git
 
 # build
 cd /path/to/your/catkin_ws
-rosdep install --from-paths src --ignore-src -y      # Install dependencies
-catkin build dwa_planner -DCMAKE_BUILD_TYPE=Release  # Release build is recommended
+rosdep install -riy --from-paths src --rosdistro noetic # Install dependencies
+catkin build dwa_planner -DCMAKE_BUILD_TYPE=Release     # Release build is recommended
 ```
 
 ## How to use
@@ -34,7 +34,17 @@ catkin build dwa_planner -DCMAKE_BUILD_TYPE=Release  # Release build is recommen
 roslaunch dwa_planner local_planner.launch
 ```
 
-## Running the demo
+## Running the demo with docker
+```
+git clone https://github.com/amslabtech/dwa_planner.git && cd dwa_planner
+
+# build an image, create a container and start demo (Ctrl-c: stop a container and exit)
+docker compose up
+# remove a container
+docker compose down
+```
+
+## Running the demo without docker
 ### Using simulator
 ```
 # clone repository
@@ -45,18 +55,14 @@ git clone -b noetic-devel https://github.com/ROBOTIS-GIT/turtlebot3_simulations.
 
 # build
 cd /path/to/your/catkin_ws
-rosdep install --from-paths src --ignore-src -y # Install dependencies
-catkin build -DCMAKE_BUILD_TYPE=Release         # Release build is recommended
+rosdep install -riy --from-paths src --rosdistro noetic
+catkin build -DCMAKE_BUILD_TYPE=Release
 
 # run demo
 export TURTLEBOT3_MODEL=burger
-roslaunch turtlebot3_navigation turtlebot3_navigation.launch
-export TURTLEBOT3_MODEL=burger
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
-roslaunch dwa_planner local_planner.launch use_scan_as_input:=True v_path_width:=0.02
+roslaunch dwa_planner demo.launch
 ```
 ![demo 2](docs/images/dwa_planner_demo_2.gif)
-
 
 ## Node I/O
 ![Node I/O](docs/images/dwa_planner_io.png)
