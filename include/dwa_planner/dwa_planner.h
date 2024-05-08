@@ -249,13 +249,15 @@ public:
 
   /**
    * @brief Get obstacle list from local map
+   * @param map The local map
    */
-  void raycast(const nav_msgs::OccupancyGrid &map);
+  void create_obs_list(const nav_msgs::OccupancyGrid &map);
 
   /**
    * @brief Get obstacle list from laser scan
+   * @param scan The laser scan
    */
-  void scan_to_obs(const sensor_msgs::LaserScan &scan);
+  void create_obs_list(const sensor_msgs::LaserScan &scan);
 
   /**
    * @brief Calculate the distance from robot footprint to the nearest obstacle
