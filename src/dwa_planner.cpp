@@ -8,8 +8,7 @@
 #include "dwa_planner/dwa_planner.h"
 
 DWAPlanner::DWAPlanner(void)
-    : local_nh_("~"), footprint_subscribed_(false), goal_subscribed_(false), odom_updated_(false),
-      edge_on_global_path_subscribed_(false), local_map_updated_(false), scan_updated_(false), has_reached_(false),
+    : local_nh_("~"), odom_updated_(false), local_map_updated_(false), scan_updated_(false), has_reached_(false),
       use_speed_cost_(false), odom_not_subscribe_count_(0), local_map_not_subscribe_count_(0),
       scan_not_subscribe_count_(0)
 {
@@ -34,15 +33,13 @@ DWAPlanner::DWAPlanner(void)
   target_velocity_sub_ = nh_.subscribe("/target_velocity", 1, &DWAPlanner::target_velocity_callback, this);
 
   if (!use_footprint_)
-    footprint_subscribed_ = true;
+    footprint_ = geometry_msgs::PolygonStamped();
   if (!use_path_cost_)
-    edge_on_global_path_subscribed_ = true;
+    edge_points_on_path_ = nav_msgs::Path();
   if (!use_scan_as_input_)
     scan_updated_ = true;
   else
     local_map_updated_ = true;
-
-  edge_points_on_path_.resize(2);
 }
 
 DWAPlanner::State::State(void) : x_(0.0), y_(0.0), yaw_(0.0), velocity_(0.0), yawrate_(0.0) {}
@@ -91,18 +88,18 @@ void DWAPlanner::Cost::calc_total_cost(void) { total_cost_ = obs_cost_ + to_goal
 void DWAPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
 {
   goal_msg_ = *msg;
-  if (goal_msg_.header.frame_id != global_frame_)
+  if (goal_msg_.value().header.frame_id != global_frame_)
   {
     try
     {
-      listener_.transformPose(global_frame_, ros::Time(0), goal_msg_, goal_msg_.header.frame_id, goal_msg_);
+      listener_.transformPose(
+          global_frame_, ros::Time(0), goal_msg_.value(), goal_msg_.value().header.frame_id, goal_msg_.value());
     }
     catch (tf::TransformException ex)
     {
       ROS_ERROR("%s", ex.what());
     }
   }
-  goal_subscribed_ = true;
 }
 
 void DWAPlanner::scan_callback(const sensor_msgs::LaserScanConstPtr &msg)
@@ -137,12 +134,11 @@ void DWAPlanner::target_velocity_callback(const geometry_msgs::TwistConstPtr &ms
 void DWAPlanner::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
 {
   footprint_ = *msg;
-  for (auto &point : footprint_.polygon.points)
+  for (auto &point : footprint_.value().polygon.points)
   {
     point.x += point.x < 0 ? -footprint_padding_ : footprint_padding_;
     point.y += point.y < 0 ? -footprint_padding_ : footprint_padding_;
   }
-  footprint_subscribed_ = true;
 }
 
 void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg)
@@ -153,15 +149,13 @@ void DWAPlanner::dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg)
 
 void DWAPlanner::edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg)
 {
-  edge_points_on_path_.front() = msg->poses.front();
-  edge_points_on_path_.back() = msg->poses.back();
+  if (!use_path_cost_)
+    return;
+  edge_points_on_path_ = *msg;
   try
   {
-    for (auto &pose : edge_points_on_path_)
-    {
+    for (auto &pose : edge_points_on_path_.value().poses)
       listener_.transformPose(robot_frame_, ros::Time(0), pose, msg->header.frame_id, pose);
-      edge_on_global_path_subscribed_ = true;
-    }
   }
   catch (tf::TransformException ex)
   {
@@ -333,11 +327,11 @@ void DWAPlanner::process(void)
 
 bool DWAPlanner::can_move(void)
 {
-  if (!footprint_subscribed_)
+  if (!footprint_.has_value())
     ROS_WARN_THROTTLE(1.0, "Robot Footprint has not been updated");
-  if (!goal_subscribed_)
+  if (!goal_msg_.has_value())
     ROS_WARN_THROTTLE(1.0, "Local goal has not been updated");
-  if (!edge_on_global_path_subscribed_)
+  if (!edge_points_on_path_.has_value())
     ROS_WARN_THROTTLE(1.0, "Edge on global path has not been updated");
   if (subscribe_count_th_ < odom_not_subscribe_count_)
     ROS_WARN_THROTTLE(1.0, "Odom has not been updated");
@@ -353,7 +347,7 @@ bool DWAPlanner::can_move(void)
   if (!scan_updated_)
     scan_not_subscribe_count_++;
 
-  if (footprint_subscribed_ && goal_subscribed_ && edge_on_global_path_subscribed_ &&
+  if (footprint_.has_value() && goal_msg_.has_value() && edge_points_on_path_.has_value() &&
       odom_not_subscribe_count_ <= subscribe_count_th_ && local_map_not_subscribe_count_ <= subscribe_count_th_ &&
       scan_not_subscribe_count_ <= subscribe_count_th_)
     return true;
@@ -372,7 +366,7 @@ geometry_msgs::Twist DWAPlanner::calc_cmd_vel(void)
   geometry_msgs::PoseStamped goal_;
   try
   {
-    listener_.transformPose(robot_frame_, ros::Time(0), goal_msg_, goal_msg_.header.frame_id, goal_);
+    listener_.transformPose(robot_frame_, ros::Time(0), goal_msg_.value(), goal_msg_.value().header.frame_id, goal_);
   }
   catch (tf::TransformException ex)
   {
@@ -521,8 +515,8 @@ float DWAPlanner::calc_path_cost(const std::vector<State> &traj)
 
 float DWAPlanner::calc_dist_to_path(const State state)
 {
-  geometry_msgs::Point edge_point1 = edge_points_on_path_.front().pose.position;
-  geometry_msgs::Point edge_point2 = edge_points_on_path_.back().pose.position;
+  geometry_msgs::Point edge_point1 = edge_points_on_path_.value().poses.front().pose.position;
+  geometry_msgs::Point edge_point2 = edge_points_on_path_.value().poses.back().pose.position;
   const float a = edge_point2.y - edge_point1.y;
   const float b = -(edge_point2.x - edge_point1.x);
   const float c = -a * edge_point1.x - b * edge_point1.y;
@@ -621,7 +615,7 @@ geometry_msgs::PolygonStamped DWAPlanner::move_footprint(const State &target_pos
   geometry_msgs::PolygonStamped footprint;
   if (use_footprint_)
   {
-    footprint = footprint_;
+    footprint = footprint_.value();
   }
   else
   {
