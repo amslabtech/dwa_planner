@@ -773,7 +773,7 @@ visualization_msgs::Marker DWAPlanner::create_marker_msg(
   marker.scale.x = scale;
   marker.color = color;
   marker.color.a = 0.8;
-  marker.lifetime = ros::Duration();
+  marker.lifetime = ros::Duration(1 / hz_);
 
   geometry_msgs::Point p;
   if (footprint.polygon.points.empty())
