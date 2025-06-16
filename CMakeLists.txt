@@ -1,50 +1,121 @@
-cmake_minimum_required(VERSION 3.0.2)
-project(dwa_planner)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR) 
+project(dwa_planner) 
 
-add_compile_options(-std=c++17 -O2 -g)
 
-find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
-  roscpp
-  std_msgs
-  tf
-)
-find_package(Eigen3 REQUIRED COMPONENTS system)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+if(CMAKE_CXX_STANDARD_REQUIRED)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
-###################################
-## catkin specific configuration ##
-###################################
-catkin_package(
-    INCLUDE_DIRS include
-    LIBRARIES dwa_planner_lib
-)
 
-###########
-## Build ##
-###########
+find_package(ament_cmake REQUIRED)
+
+
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED) 
+find_package(sensor_msgs REQUIRED) 
+find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED) 
+find_package(tf2 REQUIRED) 
+find_package(tf2_ros REQUIRED) 
+find_package(tf2_geometry_msgs REQUIRED) 
+find_package(Eigen3 REQUIRED COMPONENTS system) 
+
+
 include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
+  include 
+  ${Eigen3_INCLUDE_DIRS}
 )
+
 
 add_library(dwa_planner_lib
   src/dwa_planner.cpp
   src/parameters.cpp
 )
-add_dependencies(dwa_planner_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_executable(dwa_planner src/dwa_planner_node.cpp)
-target_link_libraries(dwa_planner
-  ${catkin_LIBRARIES}
-  dwa_planner_lib
+
+ament_target_dependencies(dwa_planner_lib
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  std_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+
 )
 
-#############
-## Testing ##
-#############
-if(CATKIN_ENABLE_TESTING)
-    find_package(rostest REQUIRED)
-    find_package(roslint REQUIRED)
-    roslint_cpp()
-    roslint_add_test()
+
+
+
+
+
+add_executable(dwa_planner_node src/dwa_planner_node.cpp)
+target_link_libraries(dwa_planner_node PRIVATE dwa_planner_lib)
+
+# ament_target_dependencies(dwa_planner_node
+#   rclcpp
+#   target_link_libraries(dwa_planner_node PRIVATE dwa_planner_lib)
+# )
+
+
+install(TARGETS
+  dwa_planner_lib
+  dwa_planner_node
+  DESTINATION lib/${PROJECT_NAME} 
+)
+
+install(DIRECTORY
+  include/
+  DESTINATION include 
+)
+
+
+
+ament_export_dependencies(
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  sensor_msgs
+  std_msgs
+  visualization_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+  Eigen3 
+)
+
+
+
+
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(dwa_planner_test test/test_dwa_planner.cpp
+
+  )
+  ament_target_dependencies(dwa_planner_test
+    rclcpp
+    geometry_msgs
+    nav_msgs
+    sensor_msgs
+    std_msgs
+    visualization_msgs
+    tf2
+    tf2_ros
+    tf2_geometry_msgs
+    Eigen3
+  )
+  target_link_libraries(dwa_planner_test dwa_planner_lib)
+  
 endif()
+
+
+ament_package()
