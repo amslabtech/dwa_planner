@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup ROS
+        uses: ros-tooling/setup-ros@v0.7
       - name: Build
         uses: ros-tooling/action-ros-ci@v0.4
         with:
