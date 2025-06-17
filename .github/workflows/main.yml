@@ -19,4 +19,4 @@ jobs:
       - name: Build
         uses: ros-tooling/action-ros-ci@v0.4
         with:
-          target-ros1-distro: humble
+          target-ros2-distro: humble
