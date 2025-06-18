@@ -1,11 +1,5 @@
 // Copyright 2020 amsl
 
-/**
- * @file dwa_planner.h
- * @brief C++ implementation for dwa planner
- * @author AMSL
- */
-
 #ifndef DWA_PLANNER_DWA_PLANNER_H
 #define DWA_PLANNER_DWA_PLANNER_H
 
@@ -157,282 +151,96 @@ public:
 private:
   };
 
-  /**
-   * @brief Execute local path planning
-   */
   void process(void);
 
-  /**
-   * @brief Load parameters
-
-   */
   void load_params(void);
 
-  /**
-   * @brief Print parameters
-   * ROS 2のロギングに合わせる
-   */
   void print_params(void);
 
-  /**
-   * @brief A callback to handle buffering local goal messages
-
-   */
   void goal_callback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering scan messages
-
-   */
   void scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering local map messages
-
-   */
   void local_map_callback(const nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering odometry messages
-
-   */
   void odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering target velocity messages
-
-   */
   void target_velocity_callback(const geometry_msgs::msg::Twist::ConstSharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering footprint messages
-
-   */
   void footprint_callback(const geometry_msgs::msg::PolygonStamped::SharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering distance to goal threshold messages
-
-   */
   void dist_to_goal_th_callback(const std_msgs::msg::Float64::ConstSharedPtr msg);
 
-  /**
-   * @brief A callback to handle buffering edge on global path messages
-
-   */
   void edge_on_global_path_callback(const nav_msgs::msg::Path::ConstSharedPtr msg);
 
-  /**
-   * @brief Calculate dynamic window
-   * @return The dynamic window
-   */
   Window calc_dynamic_window(void);
 
-  /**
-   * @brief Calculate obstacle cost
-   * @param traj The estimated trajectory
-   * @return The obstacle cost
-   */
   float calc_obs_cost(const std::vector < State > & traj);
 
-  /**
-   * @brief Calculate the distance of current pose to goal pose
-   * @param traj The estimated trajectory
-   * @param goal The pose of goal
-   * @return The distance of current pose to goal pose
-   */
   float calc_to_goal_cost(const std::vector < State > & traj, const Eigen::Vector3d & goal);
 
-  /**
-   * @brief Calculate the speed cost
-   * @param traj The estimated trajectory
-   * @return The speed cost
-   */
   float calc_speed_cost(const std::vector < State > & traj);
 
-  /**
-   * @brief Calculate the path cost
-   * @param traj The estimated trajectory
-   * @return The path cost
-   */
   float calc_path_cost(const std::vector < State > & traj);
 
-  /**
-   * @brief Calculate the distance of current pose to global path
-   * @param state The robot state
-   * @return The distance of current pose to global path
-   */
   float calc_dist_to_path(const State state);
 
-  /**
-   * @brief Simulate the robot motion
-   * @param state The start state of robot
-   * @param velocity The velocity of robot
-   * @param yawrate The angular velocity of robot
-   */
   void motion(State & state, const double velocity, const double yawrate);
 
-  /**
-   * @brief Get obstacle list from local map
-   * @param map The local map (ROS 2 msg type)
-   */
   void create_obs_list(const nav_msgs::msg::OccupancyGrid & map);
 
-  /**
-   * @brief Get obstacle list from laser scan
-   * @param scan
-   */
   void create_obs_list(const sensor_msgs::msg::LaserScan & scan);
 
-  /**
-   * @brief Calculate the distance from robot footprint to the nearest obstacle
-   * @param obstacle
-   * @param state The robot state
-   * @return The distance from robot footprint to the nearest obstacle
-   */
   float calc_dist_from_robot(const geometry_msgs::msg::Point & obstacle, const State & state);
 
-  /**
-   * @brief Move the robot footprint to the target pose
-   * @param target_pose The target pose
-   * @return The moved footprint
-   */
   geometry_msgs::msg::PolygonStamped move_footprint(const State & target_pose);
 
-  /**
-   * @brief Check if the obstacle is inside of robot footprint
-   * @param obstacle The position of obstacle
-   * @param footprint The robot footprint
-   * @param state The robot state
-   * @return True if the obstacle is inside of robot footprint
-   */
   bool is_inside_of_robot(
     const geometry_msgs::msg::Point & obstacle,
     const geometry_msgs::msg::PolygonStamped & footprint, const State & state);
 
-  /**
-   * @brief Check if the target point is inside of triangle
-   * @param target_point The target point
-   * @param triangle The triangle
-   * @return True if the target point is inside of triangle
-   */
   bool is_inside_of_triangle(
     const geometry_msgs::msg::Point & target_point,
     const geometry_msgs::msg::Polygon & triangle);
 
-  /**
-   * @brief Calculate the intersection point of the line and the circle
-   * @param obstacle The position of obstacle
-   * @param state The robot state
-   * @param footprint The robot footprint
-   * @return The intersection point of the line and the circle
-   */
   geometry_msgs::msg::Point
   calc_intersection(
     const geometry_msgs::msg::Point & obstacle, const State & state,
     geometry_msgs::msg::PolygonStamped footprint);
 
-  /**
-   * @brief Generate trajectory
-   * @param velocity The velocity of robot
-   * @param yawrate The angular velocity of robot
-   * @return The generated trajectory
-   */
   std::vector < State > generate_trajectory(const double velocity, const double yawrate);
 
-  /**
-   * @brief Generate trajectory
-   * @param yawrate The angular velocity of robot
-   * @param goal The pose of goal
-   * @return The generated trajectory
-   */
   std::vector < State > generate_trajectory(const double yawrate, const Eigen::Vector3d & goal);
 
-  /**
-   * @brief Evaluate trajectory
-   * @param trajectory The estimated trajectory
-   * @param goal The pose of goal
-   * @return The cost of trajectory
-   */
   Cost evaluate_trajectory(const std::vector < State > & trajectory, const Eigen::Vector3d & goal);
 
-  /**
-   * @brief Check if the robot can move
-   * @return True if the robot can move
-   */
   bool can_move(void);
 
-  /**
-   * @brief Calculate the command velocity
-   * @return The command velocity (ROS 2 msg type)
-   */
   geometry_msgs::msg::Twist calc_cmd_vel(void);
 
-  /**
-   * @brief Check if the robot can adjust the direction
-   * @param goal The pose of goal
-   * @return True if the robot can adjust the direction
-   */
   bool can_adjust_robot_direction(const Eigen::Vector3d & goal);
 
-  /**
-   * @brief Check if the robot has collided
-   * @param traj The estimated trajectory
-   * @return True if the robot has collided
-   */
   bool check_collision(const std::vector < State > & traj);
 
-  /**
-   * @brief Normalize the costs
-   * @param costs array of costs
-   */
   void normalize_costs(std::vector < Cost > & costs);
 
-  /**
-   * @brief Create a marker message
-   * @param id The id of marker
-   * @param scale The scale of marker
-   * @param color The color of marker (ROS 2 msg type)
-   * @param trajectory The estimated trajectory
-   * @param footprint The robot footprint (ROS 2 msg type)
-   */
   visualization_msgs::msg::Marker create_marker_msg(
     const int id, const double scale, const std_msgs::msg::ColorRGBA color,
     const std::vector < State > & trajectory,
     const geometry_msgs::msg::PolygonStamped & footprint = geometry_msgs::msg::PolygonStamped());
 
-  /**
-   * @brief Publish selected trajectory
-   * @param trajectory Selected trajectry
-   * @param pub Publisher of selected trajectory (ROS 2 publisher type)
-   */
   void visualize_trajectory(
     const std::vector < State > & trajectory,
     const rclcpp::Publisher < visualization_msgs::msg::Marker > ::SharedPtr & pub);
 
-  /**
-   * @brief Publish candidate trajectories
-   * @param trajectories Candidated trajectories
-   * @param pub Publisher of candidate trajectories (ROS 2 publisher type)
-   */
   void visualize_trajectories(
     const std::vector < std::pair < std::vector < State >, bool >> & trajectories,
     const rclcpp::Publisher < visualization_msgs::msg::MarkerArray > ::SharedPtr & pub);
 
-  /**
-   * @brief Publish predicted footprints
-   * @param trajectory Selected trajectry
-   * @param pub Publisher of predicted footprints (ROS 2 publisher type)
-   */
   void visualize_footprints(
     const std::vector < State > & trajectory,
     const rclcpp::Publisher < visualization_msgs::msg::MarkerArray > ::SharedPtr & pub);
 
-  /**
-   * @brief Execute dwa planning
-   * @param goal Goal pose
-   * @param obs_list Obstacle's position
-   */
   std::vector < State >
   dwa_planning(
     const Eigen::Vector3d & goal, std::vector < std::pair < std::vector < State >,
