@@ -6,7 +6,7 @@
   <description>The dwa_planner package</description>
   <maintainer email="amsl@todo.todo">amsl</maintainer>
 
-  <license>BSD 3-Clause License</license>
+  <license>make License</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
@@ -20,7 +20,8 @@
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
-  <test_depend>ament_cmake_gtest</test_depend> <export>
+
+  <export>
     <build_type>ament_cmake</build_type>
   </export>
 </package>
