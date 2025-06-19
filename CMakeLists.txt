@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8)
 project(dwa_planner)
 
 if(NOT CMAKE_CXX_STANDARD)
@@ -21,14 +21,14 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED COMPONENTS system)
 
-include_directories(
-  include
-  ${Eigen3_INCLUDE_DIRS}
-)
-
 add_library(dwa_planner_lib
   src/dwa_planner.cpp
   src/parameters.cpp
+)
+
+target_include_directories(dwa_planner_lib PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${EIGEN3_INCLUDE_DIR}>
 )
 
 ament_target_dependencies(dwa_planner_lib

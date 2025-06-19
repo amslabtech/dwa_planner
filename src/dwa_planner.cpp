@@ -8,7 +8,7 @@
 #include <limits>
 
 
-#include "dwa_planner/dwa_planner.h" // DWA Planner クラス定義を含むヘッダー
+#include "dwa_planner/dwa_planner.h"
 
 // --- State Class Implementation ---
 DWAPlanner::State::State(void)
@@ -23,22 +23,24 @@ DWAPlanner::State::State(
 
 // --- Window Class Implementation ---
 DWAPlanner::Window::Window(void)
-: min_velocity_(0.0), max_velocity_(0.0), min_yawrate_(0.0), max_yawrate_(0.0) {}
+: min_velocity_(0.0), max_velocity_(0.0), min_yawrate_(0.0), max_yawrate_(0.0), logger_(rclcpp::get_logger(
+      "dwa_planner_window")) {}
 
 void DWAPlanner::Window::show(void)
 {
-  std::cout << "Window:" << std::endl;
-  std::cout << "\tVelocity:" << std::endl;
-  std::cout << "\t\tmax: " << max_velocity_ << std::endl;
-  std::cout << "\t\tmin: " << min_velocity_ << std::endl;
-  std::cout << "\tYawrate:" << std::endl;
-  std::cout << "\t\tmax: " << max_yawrate_ << std::endl;
-  std::cout << "\t\tmin: " << min_yawrate_ << std::endl;
+  RCLCPP_INFO(logger_, "Window:"); // this->get_logger() ではなく logger_ を使う
+  RCLCPP_INFO(logger_, "\tVelocity:");
+  RCLCPP_INFO(logger_, "\t\tmax: %f", max_velocity_);
+  RCLCPP_INFO(logger_, "\t\tmin: %f", min_velocity_);
+  RCLCPP_INFO(logger_, "\tYawrate:");
+  RCLCPP_INFO(logger_, "\t\tmax: %f", max_yawrate_);
+  RCLCPP_INFO(logger_, "\t\tmin: %f", min_yawrate_);
 }
 
 // --- Cost Class Implementation ---
 DWAPlanner::Cost::Cost(void)
-: obs_cost_(0.0), to_goal_cost_(0.0), speed_cost_(0.0), path_cost_(0.0), total_cost_(0.0)
+: obs_cost_(0.0), to_goal_cost_(0.0), speed_cost_(0.0), path_cost_(0.0), total_cost_(0.0), logger_(rclcpp::get_logger(
+      "dwa_planner_window"))
 {
 }
 
@@ -46,17 +48,17 @@ DWAPlanner::Cost::Cost(
   const float obs_cost, const float to_goal_cost, const float speed_cost, const float path_cost,
   const float total_cost)
 : obs_cost_(obs_cost), to_goal_cost_(to_goal_cost), speed_cost_(speed_cost), path_cost_(path_cost),
-  total_cost_(total_cost)
+  total_cost_(total_cost), logger_(rclcpp::get_logger("dwa_planner_window"))
 {
 }
 
 void DWAPlanner::Cost::show(void)
 {
-  std::cout << "Cost: " << total_cost_ << std::endl;
-  std::cout << "\tObs cost: " << obs_cost_ << std::endl;
-  std::cout << "\tGoal cost: " << to_goal_cost_ << std::endl;
-  std::cout << "\tSpeed cost: " << speed_cost_ << std::endl;
-  std::cout << "\tPath cost: " << path_cost_ << std::endl;
+  RCLCPP_INFO(logger_, "Cost: %f", total_cost_);
+  RCLCPP_INFO(logger_, "\tObs cost: %f", obs_cost_);
+  RCLCPP_INFO(logger_, "\tGoal cost: %f", to_goal_cost_);
+  RCLCPP_INFO(logger_, "\tSpeed cost: %f", speed_cost_);
+  RCLCPP_INFO(logger_, "\tPath cost: %f", path_cost_);
 }
 
 void DWAPlanner::Cost::calc_total_cost(void)
@@ -67,12 +69,12 @@ void DWAPlanner::Cost::calc_total_cost(void)
 // --- DWAPlanner Class Implementation ---
 
 DWAPlanner::DWAPlanner(const rclcpp::NodeOptions & options)
-: rclcpp::Node("dwa_planner_node", options),     // ROS 2 ノードの初期化
+: rclcpp::Node("dwa_planner_node", options),
   odom_updated_(false), local_map_updated_(false), scan_updated_(false), has_reached_(false),
   use_speed_cost_(false), odom_not_subscribe_count_(0), local_map_not_subscribe_count_(0),
   scan_not_subscribe_count_(0)
 {
-  // ROS 2 ロガー
+
   RCLCPP_INFO(this->get_logger(), "=== DWA Planner ===");
 
 
@@ -80,7 +82,7 @@ DWAPlanner::DWAPlanner(const rclcpp::NodeOptions & options)
 
   print_params();
 
-  // パブリッシャーの作成
+
   velocity_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 1);
   candidate_trajectories_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
     "candidate_trajectories", 1);
@@ -90,7 +92,7 @@ DWAPlanner::DWAPlanner(const rclcpp::NodeOptions & options)
     "predict_footprints", 1);
   finish_flag_pub_ = this->create_publisher<std_msgs::msg::Bool>("finish_flag", 1);
 
-  // サブスクライバーの作成
+
   dist_to_goal_th_sub_ = this->create_subscription<std_msgs::msg::Float64>(
     "/dist_to_goal_th", 1,
     std::bind(&DWAPlanner::dist_to_goal_th_callback, this, std::placeholders::_1));
@@ -111,7 +113,6 @@ DWAPlanner::DWAPlanner(const rclcpp::NodeOptions & options)
     "/target_velocity", 1,
     std::bind(&DWAPlanner::target_velocity_callback, this, std::placeholders::_1));
 
-  // TF2 の初期化
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
@@ -213,7 +214,6 @@ void DWAPlanner::edge_on_global_path_callback(const nav_msgs::msg::Path::ConstSh
       robot_frame_, msg->header.frame_id,
       tf2::TimePointZero);
 
-    // Path内の各Poseを変換
     for (auto & pose : edge_points_on_path_->poses) {
       geometry_msgs::msg::PoseStamped original_pose_stamped;
       original_pose_stamped.header = msg->header;
@@ -366,16 +366,15 @@ void DWAPlanner::normalize_costs(std::vector<DWAPlanner::Cost> & costs)
 
 void DWAPlanner::process(void)
 {
-  rclcpp::Rate loop_rate(hz_); // ROS 2 の Rate
-  while (rclcpp::ok()) {      // ROS 2 のシャットダウンチェック
-    geometry_msgs::msg::Twist cmd_vel; // ROS 2 メッセージ型
+  rclcpp::Rate loop_rate(hz_);
+  while (rclcpp::ok()) {
+    geometry_msgs::msg::Twist cmd_vel;
     if (can_move()) {
       cmd_vel = calc_cmd_vel();
     }
-    velocity_pub_->publish(cmd_vel); // ROS 2 パブリッシャー
-    finish_flag_pub_->publish(has_finished_); // ROS 2 パブリッシャー
+    velocity_pub_->publish(cmd_vel);
+    finish_flag_pub_->publish(has_finished_);
     if (has_finished_.data) {
-      // rclcpp::Duration::from_seconds(sleep_time_after_finish_).sleep(); は非推奨
       loop_rate.sleep();
     }
     rclcpp::sleep_for(
@@ -391,8 +390,8 @@ void DWAPlanner::process(void)
     odom_updated_ = false;
     has_finished_.data = false;
 
-    rclcpp::spin_some(this->get_node_base_interface()); // コールバックを処理
-    loop_rate.sleep(); // ループレートを維持
+    rclcpp::spin_some(this->get_node_base_interface());
+    loop_rate.sleep();
   }
 }
 
@@ -475,12 +474,10 @@ geometry_msgs::msg::Twist DWAPlanner::calc_cmd_vel(void)
   tf2::Quaternion tf2_quat;
   tf2::fromMsg(goal_.pose.orientation, tf2_quat);
 
-// tf2::Quaternion からロール、ピッチ、ヨーを取得するために tf2::Matrix3x3 を使用
   tf2::Matrix3x3 m(tf2_quat);
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
 
-// 取得した yaw を使用して Eigen::Vector3d を構築
   const Eigen::Vector3d goal(goal_.pose.position.x, goal_.pose.position.y, yaw);
 
 
@@ -517,7 +514,7 @@ geometry_msgs::msg::Twist DWAPlanner::calc_cmd_vel(void)
       has_finished_.data = true;
       has_reached_ = false;
     }
-    best_traj.first = generate_trajectory(cmd_vel.linear.x, cmd_vel.angular.z); // generate_trajectory(velocity, yawrate)
+    best_traj.first = generate_trajectory(cmd_vel.linear.x, cmd_vel.angular.z);
     trajectories.push_back(best_traj);
 
 
@@ -1008,23 +1005,3 @@ void DWAPlanner::visualize_footprints(
   }
   pub->publish(v_footprints);
 }
-
-// // --- Main Function (for the node) ---
-// int main(int argc, char* argv[])
-// {
-//   rclcpp::init(argc, argv);
-//   // DWAPlannerノードのインスタンスを作成
-//   // NodeOptions() を渡すことで、外部からのノード名やExecutorの設定が可能になる
-//   auto node = std::make_shared<DWAPlanner>(rclcpp::NodeOptions());
-
-//   // `process()` メソッドがメインループとして機能する
-//   // rclcpp::spin() を使うと、ROS 2のExecutorがコールバックを自動的に処理し続ける
-//   // しかし、元のコードの `process()` はカスタムループを持っていたため、
-//   // そのループ内で `rclcpp::spin_some()` を呼び出すことで、
-//   // コールバック処理とカスタムロジックを両立させる。
-//   // そのため、ここでは `node->process()` を呼び出す。
-//   node->process();
-
-//   rclcpp::shutdown(); // ROS 2 のシャットダウン
-//   return 0;
-// }

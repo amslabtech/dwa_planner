@@ -6,7 +6,7 @@
   <description>The dwa_planner package</description>
   <maintainer email="amsl@todo.todo">amsl</maintainer>
 
-  <license>make License</license>
+  <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
