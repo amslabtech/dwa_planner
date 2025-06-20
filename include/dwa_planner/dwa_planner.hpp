@@ -479,8 +479,7 @@ protected:
   int scan_not_subscribe_count_;
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocity_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>
-  ::SharedPtr candidate_trajectories_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr candidate_trajectories_pub_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr selected_trajectory_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr predict_footprints_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr finish_flag_pub_;
