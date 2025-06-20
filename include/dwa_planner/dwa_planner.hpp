@@ -322,8 +322,8 @@ private:
   geometry_msgs::msg::Point
   calc_intersection(
     const geometry_msgs::msg::Point & obstacle, const State & state,
-
     geometry_msgs::msg::PolygonStamped footprint);
+
   /**
    * @brief Generate trajectory
    * @param velocity The velocity of robot
