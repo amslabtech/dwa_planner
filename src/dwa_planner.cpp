@@ -8,7 +8,7 @@
 #include <limits>
 
 
-#include "dwa_planner/dwa_planner.h"
+#include "dwa_planner/dwa_planner.hpp"
 
 // --- State Class Implementation ---
 DWAPlanner::State::State(void)

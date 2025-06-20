@@ -4,7 +4,7 @@
 #include <string>
 #include <cmath> // For M_PI
 
-#include "dwa_planner/dwa_planner.h" // Assuming this header includes rclcpp/rclcpp.hpp
+#include "dwa_planner/dwa_planner.hpp" // Assuming this header includes rclcpp/rclcpp.hpp
 
 void DWAPlanner::load_params(void)
 {

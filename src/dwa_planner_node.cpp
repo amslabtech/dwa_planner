@@ -1,6 +1,6 @@
 // Copyright 2020 amsl
 
-#include "dwa_planner/dwa_planner.h"
+#include "dwa_planner/dwa_planner.hpp"
 
 int main(int argc, char ** argv)
 {
