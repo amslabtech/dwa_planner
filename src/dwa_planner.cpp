@@ -28,7 +28,7 @@ DWAPlanner::Window::Window(void)
 
 void DWAPlanner::Window::show(void)
 {
-  RCLCPP_INFO(logger_, "Window:"); // this->get_logger() ではなく logger_ を使う
+  RCLCPP_INFO(logger_, "Window:");
   RCLCPP_INFO(logger_, "\tVelocity:");
   RCLCPP_INFO(logger_, "\t\tmax: %f", max_velocity_);
   RCLCPP_INFO(logger_, "\t\tmin: %f", min_velocity_);

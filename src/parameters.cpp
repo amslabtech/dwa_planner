@@ -4,14 +4,10 @@
 #include <string>
 #include <cmath> // For M_PI
 
-#include "dwa_planner/dwa_planner.hpp" // Assuming this header includes rclcpp/rclcpp.hpp
+#include "dwa_planner/dwa_planner.hpp"
 
 void DWAPlanner::load_params(void)
 {
-  // In ROS 2, you declare parameters and then get their values.
-  // The 'this->' prefix is used to call methods of the rclcpp::Node base class.
-  // Declare and get parameters for DWAPlanner.
-  // Each parameter needs to be declared, then retrieved.
   // - A -
   this->declare_parameter<double>("ANGLE_RESOLUTION", 0.087);
   this->get_parameter("ANGLE_RESOLUTION", angle_resolution_);
@@ -106,8 +102,6 @@ void DWAPlanner::load_params(void)
 
 void DWAPlanner::print_params(void)
 {
-  // In ROS 2, `ROS_INFO_STREAM` is replaced by `RCLCPP_INFO_STREAM`.
-  // You need to pass the logger of the node instance.
   // - A -
   RCLCPP_INFO_STREAM(this->get_logger(), "ANGLE_RESOLUTION: " << angle_resolution_);
   RCLCPP_INFO_STREAM(this->get_logger(), "ANGLE_TO_GOAL_TH: " << angle_to_goal_th_);
