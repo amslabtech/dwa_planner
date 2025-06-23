@@ -1,47 +1,58 @@
 // Copyright 2020 amsl
-
 /**
  * @file dwa_plannr.h
  * @brief C++ implementation for dwa planner
  * @author AMSL
  */
-
 #ifndef DWA_PLANNER_DWA_PLANNER_H
 #define DWA_PLANNER_DWA_PLANNER_H
 
-#include <geometry_msgs/PolygonStamped.h>
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Twist.h>
-#include <nav_msgs/OccupancyGrid.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-#include <ros/ros.h>
-#include <sensor_msgs/LaserScan.h>
-#include <std_msgs/Bool.h>
-#include <std_msgs/ColorRGBA.h>
-#include <std_msgs/Float64.h>
+
+#include "rclcpp/rclcpp.hpp"
+#include "geometry_msgs/msg/polygon_stamped.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/color_rgba.hpp"
+#include "std_msgs/msg/float64.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+
+
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Matrix3x3.h"
+
+
 #include <string>
-#include <tf/tf.h>
-#include <tf/transform_listener.h>
 #include <utility>
 #include <vector>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <optional>
+#include <cmath>
+#include <limits>
 
+// Eigen
 #include <Eigen/Dense>
 
 /**
  * @class DWAPlanner
  * @brief A class implementing a local planner using the Dynamic Window Approach
  */
-class DWAPlanner
+class DWAPlanner : public rclcpp::Node
 {
 public:
   /**
    * @brief Constructor for the DWAPlanner
+
    */
-  DWAPlanner(void);
+  explicit DWAPlanner(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   /**
    * @class State
@@ -49,7 +60,7 @@ public:
    */
   class State
   {
-  public:
+public:
     /**
      * @brief Constructor
      */
@@ -63,7 +74,9 @@ public:
      * @param velocity The linear velocity of robot
      * @param yawrate The angular velocity of robot
      */
-    State(const double x, const double y, const double yaw, const double velocity, const double yawrate);
+    State(
+      const double x, const double y, const double yaw, const double velocity,
+      const double yawrate);
 
     double x_;
     double y_;
@@ -71,7 +84,7 @@ public:
     double velocity_;
     double yawrate_;
 
-  private:
+private:
   };
 
   /**
@@ -80,11 +93,12 @@ public:
    */
   class Window
   {
-  public:
+public:
     /**
      * @brief Constructor
      */
     Window(void);
+    explicit Window(rclcpp::Logger logger);
 
     /**
      * @brief Show the dynamic window information
@@ -95,8 +109,9 @@ public:
     double max_velocity_;
     double min_yawrate_;
     double max_yawrate_;
+    rclcpp::Logger logger_;
 
-  private:
+private:
   };
 
   /**
@@ -105,11 +120,12 @@ public:
    */
   class Cost
   {
-  public:
+public:
     /**
      * @brief Constructor
      */
     Cost(void);
+    explicit Cost(rclcpp::Logger logger);
 
     /**
      * @brief Constructor
@@ -120,8 +136,8 @@ public:
      * @param total_cost The total cost
      */
     Cost(
-        const float obs_cost, const float to_goal_cost, const float speed_cost, const float path_cost,
-        const float total_cost);
+      const float obs_cost, const float to_goal_cost, const float speed_cost, const float path_cost,
+      const float total_cost);
 
     /**
      * @brief Show the cost
@@ -138,8 +154,9 @@ public:
     float speed_cost_;
     float path_cost_;
     float total_cost_;
+    rclcpp::Logger logger_;
 
-  private:
+private:
   };
 
   /**
@@ -160,42 +177,42 @@ public:
   /**
    * @brief A callback to hanldle buffering local goal messages
    */
-  void goal_callback(const geometry_msgs::PoseStampedConstPtr &msg);
+  void goal_callback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
 
   /**
    * @brief A callback to hanldle buffering scan messages
    */
-  void scan_callback(const sensor_msgs::LaserScanConstPtr &msg);
+  void scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg);
 
   /**
    * @brief A callback to hanldle buffering local map messages
    */
-  void local_map_callback(const nav_msgs::OccupancyGridConstPtr &msg);
+  void local_map_callback(const nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg);
 
   /**
    * @brief A callback to hanldle buffering odometry messages
    */
-  void odom_callback(const nav_msgs::OdometryConstPtr &msg);
+  void odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
 
   /**
    * @brief A callback to hanldle buffering target velocity messages
    */
-  void target_velocity_callback(const geometry_msgs::TwistConstPtr &msg);
+  void target_velocity_callback(const geometry_msgs::msg::Twist::ConstSharedPtr msg);
 
   /**
    * @brief A calllback to handle buffering footprint messages
    */
-  void footprint_callback(const geometry_msgs::PolygonStampedPtr &msg);
+  void footprint_callback(const geometry_msgs::msg::PolygonStamped::SharedPtr msg);
 
   /**
    * @brief A callback to handle buffering distance to goal threshold messages
    */
-  void dist_to_goal_th_callback(const std_msgs::Float64ConstPtr &msg);
+  void dist_to_goal_th_callback(const std_msgs::msg::Float64::ConstSharedPtr msg);
 
   /**
    * @brief A callback to handle buffering edge on global path messages
    */
-  void edge_on_global_path_callback(const nav_msgs::PathConstPtr &msg);
+  void edge_on_global_path_callback(const nav_msgs::msg::Path::ConstSharedPtr msg);
 
   /**
    * @brief Calculate dynamic window
@@ -208,7 +225,7 @@ public:
    * @param traj The estimated trajectory
    * @return The obstacle cost
    */
-  float calc_obs_cost(const std::vector<State> &traj);
+  float calc_obs_cost(const std::vector<State> & traj);
 
   /**
    * @brief Calculate the distance of current pose to goal pose
@@ -216,21 +233,21 @@ public:
    * @param goal The pose of goal
    * @return The distance of current pose to goal pose
    */
-  float calc_to_goal_cost(const std::vector<State> &traj, const Eigen::Vector3d &goal);
+  float calc_to_goal_cost(const std::vector<State> & traj, const Eigen::Vector3d & goal);
 
   /**
    * @brief Calculate the speed cost
    * @param traj The estimated trajectory
    * @return The speed cost
    */
-  float calc_speed_cost(const std::vector<State> &traj);
+  float calc_speed_cost(const std::vector<State> & traj);
 
   /**
    * @brief Calculate the path cost
    * @param traj The estimated trajectory
    * @return The path cost
    */
-  float calc_path_cost(const std::vector<State> &traj);
+  float calc_path_cost(const std::vector<State> & traj);
 
   /**
    * @brief Calculate the distance of current pose to global path
@@ -245,19 +262,19 @@ public:
    * @param velocity The velocity of robot
    * @param yawrate The angular velocity of robot
    */
-  void motion(State &state, const double velocity, const double yawrate);
+  void motion(State & state, const double velocity, const double yawrate);
 
   /**
    * @brief Get obstacle list from local map
    * @param map The local map
    */
-  void create_obs_list(const nav_msgs::OccupancyGrid &map);
+  void create_obs_list(const nav_msgs::msg::OccupancyGrid & map);
 
   /**
    * @brief Get obstacle list from laser scan
    * @param scan The laser scan
    */
-  void create_obs_list(const sensor_msgs::LaserScan &scan);
+  void create_obs_list(const sensor_msgs::msg::LaserScan & scan);
 
   /**
    * @brief Calculate the distance from robot footprint to the nearest obstacle
@@ -265,14 +282,14 @@ public:
    * @param state The robot state
    * @return The distance from robot footprint to the nearest obstacle
    */
-  float calc_dist_from_robot(const geometry_msgs::Point &obstacle, const State &state);
+  float calc_dist_from_robot(const geometry_msgs::msg::Point & obstacle, const State & state);
 
   /**
    * @brief Move the robot footprint to the target pose
    * @param target_pose The target pose
    * @return The moved footprint
    */
-  geometry_msgs::PolygonStamped move_footprint(const State &target_pose);
+  geometry_msgs::msg::PolygonStamped move_footprint(const State & target_pose);
 
   /**
    * @brief Check if the obstacle is inside of robot footprint
@@ -282,7 +299,8 @@ public:
    * @return True if the obstacle is inside of robot footprint
    */
   bool is_inside_of_robot(
-      const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint, const State &state);
+    const geometry_msgs::msg::Point & obstacle,
+    const geometry_msgs::msg::PolygonStamped & footprint, const State & state);
 
   /**
    * @brief Check if the target point is inside of triangle
@@ -290,7 +308,9 @@ public:
    * @param triangle The triangle
    * @return True if the target point is inside of triangle
    */
-  bool is_inside_of_triangle(const geometry_msgs::Point &target_point, const geometry_msgs::Polygon &triangle);
+  bool is_inside_of_triangle(
+    const geometry_msgs::msg::Point & target_point,
+    const geometry_msgs::msg::Polygon & triangle);
 
   /**
    * @brief Calculate the intersection point of the line and the circle
@@ -299,8 +319,10 @@ public:
    * @param footprint The robot footprint
    * @return The intersection point of the line and the circle
    */
-  geometry_msgs::Point
-  calc_intersection(const geometry_msgs::Point &obstacle, const State &state, geometry_msgs::PolygonStamped footprint);
+  geometry_msgs::msg::Point
+  calc_intersection(
+    const geometry_msgs::msg::Point & obstacle, const State & state,
+    geometry_msgs::msg::PolygonStamped footprint);
 
   /**
    * @brief Generate trajectory
@@ -316,7 +338,7 @@ public:
    * @param goal The pose of goal
    * @return The generated trajectory
    */
-  std::vector<State> generate_trajectory(const double yawrate, const Eigen::Vector3d &goal);
+  std::vector<State> generate_trajectory(const double yawrate, const Eigen::Vector3d & goal);
 
   /**
    * @brief Evaluate trajectory
@@ -324,7 +346,7 @@ public:
    * @param goal The pose of goal
    * @return The cost of trajectory
    */
-  Cost evaluate_trajectory(const std::vector<State> &trajectory, const Eigen::Vector3d &goal);
+  Cost evaluate_trajectory(const std::vector<State> & trajectory, const Eigen::Vector3d & goal);
 
   /**
    * @brief Check if the robot can move
@@ -336,27 +358,27 @@ public:
    * @brief Calculate the command velocity
    * @return The command velocity
    */
-  geometry_msgs::Twist calc_cmd_vel(void);
+  geometry_msgs::msg::Twist calc_cmd_vel(void);
 
   /**
    * @brief Check if the robot can adjust the direction
    * @param goal The pose of goal
    * @return True if the robot can adjust the direction
    */
-  bool can_adjust_robot_direction(const Eigen::Vector3d &goal);
+  bool can_adjust_robot_direction(const Eigen::Vector3d & goal);
 
   /**
    * @brief Check if the robot has collided
    * @param traj The estimated trajectory
    * @return True if the robot has collided
    */
-  bool check_collision(const std::vector<State> &traj);
+  bool check_collision(const std::vector<State> & traj);
 
   /**
    * @brief Normalize the costs
    * @param costs array of costs
    */
-  void normalize_costs(std::vector<Cost> &costs);
+  void normalize_costs(std::vector<Cost> & costs);
 
   /**
    * @brief Create a marker message
@@ -366,16 +388,19 @@ public:
    * @param trajectory The estimated trajectory
    * @param footprint The robot footprint
    */
-  visualization_msgs::Marker create_marker_msg(
-      const int id, const double scale, const std_msgs::ColorRGBA color, const std::vector<State> &trajectory,
-      const geometry_msgs::PolygonStamped &footprint = geometry_msgs::PolygonStamped());
+  visualization_msgs::msg::Marker create_marker_msg(
+    const int id, const double scale, const std_msgs::msg::ColorRGBA color,
+    const std::vector<State> & trajectory,
+    const geometry_msgs::msg::PolygonStamped & footprint = geometry_msgs::msg::PolygonStamped());
 
   /**
    * @brief Publish selected trajectory
    * @param trajectory Selected trajectry
    * @param pub Publisher of selected trajectory
    */
-  void visualize_trajectory(const std::vector<State> &trajectory, const ros::Publisher &pub);
+  void visualize_trajectory(
+    const std::vector<State> & trajectory,
+    const rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr & pub);
 
   /**
    * @brief Publish candidate trajectories
@@ -383,14 +408,17 @@ public:
    * @param pub Publisher of candidate trajectories
    */
   void visualize_trajectories(
-      const std::vector<std::pair<std::vector<State>, bool>> &trajectories, const ros::Publisher &pub);
+    const std::vector<std::pair<std::vector<State>, bool>> & trajectories,
+    const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & pub);
 
   /**
    * @brief Publish predicted footprints
    * @param trajectory Selected trajectry
    * @param pub Publisher of predicted footprints
    */
-  void visualize_footprints(const std::vector<State> &trajectory, const ros::Publisher &pub);
+  void visualize_footprints(
+    const std::vector<State> & trajectory,
+    const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & pub);
 
   /**
    * @brief Execute dwa planning
@@ -399,7 +427,9 @@ public:
    * @param obs_list Obstacle's position
    */
   std::vector<State>
-  dwa_planning(const Eigen::Vector3d &goal, std::vector<std::pair<std::vector<State>, bool>> &trajectories);
+  dwa_planning(
+    const Eigen::Vector3d & goal, std::vector<std::pair<std::vector<State>,
+    bool>> & trajectories);
 
 protected:
   std::string global_frame_;
@@ -448,31 +478,31 @@ protected:
   int local_map_not_subscribe_count_;
   int scan_not_subscribe_count_;
 
-  ros::NodeHandle nh_;
-  ros::NodeHandle local_nh_;
-  ros::Publisher velocity_pub_;
-  ros::Publisher candidate_trajectories_pub_;
-  ros::Publisher selected_trajectory_pub_;
-  ros::Publisher predict_footprints_pub_;
-  ros::Publisher finish_flag_pub_;
-  ros::Subscriber dist_to_goal_th_sub_;
-  ros::Subscriber edge_on_global_path_sub_;
-  ros::Subscriber footprint_sub_;
-  ros::Subscriber goal_sub_;
-  ros::Subscriber local_map_sub_;
-  ros::Subscriber odom_sub_;
-  ros::Subscriber scan_sub_;
-  ros::Subscriber target_velocity_sub_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocity_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr candidate_trajectories_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr selected_trajectory_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr predict_footprints_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr finish_flag_pub_;
 
-  geometry_msgs::Twist current_cmd_vel_;
-  std::optional<geometry_msgs::PoseStamped> goal_msg_;
-  geometry_msgs::PoseArray obs_list_;
-  std::optional<geometry_msgs::PolygonStamped> footprint_;
-  std::optional<nav_msgs::Path> edge_points_on_path_;
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr dist_to_goal_th_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr edge_on_global_path_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr footprint_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr local_map_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr target_velocity_sub_;
 
-  std_msgs::Bool has_finished_;
+  geometry_msgs::msg::Twist current_cmd_vel_;
+  std::optional<geometry_msgs::msg::PoseStamped> goal_msg_;
+  geometry_msgs::msg::PoseArray obs_list_;
+  std::optional<geometry_msgs::msg::PolygonStamped> footprint_;
+  std::optional<nav_msgs::msg::Path> edge_points_on_path_;
 
-  tf::TransformListener listener_;
+  std_msgs::msg::Bool has_finished_;
+
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 #endif  // DWA_PLANNER_DWA_PLANNER_H
